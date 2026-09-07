@@ -5,13 +5,18 @@
 // a fresh cache and removes the old one. Requests are matched without their
 // ?v= parameter because the stored files already belong to this version.
 const VERSION = '__VERSION__';
-const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal' : VERSION}`;
+// The local suffix makes structural asset changes visible in previews even
+// before the deployment workflow replaces VERSION with a commit stamp.
+const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal-four-monsters-v5' : VERSION}`;
 const FILES = [
   './', 'index.html', 'styles.css', 'app.js', 'monster-motion.js', 'rig.js', 'sounds.js', 'manifest.webmanifest',
-  'assets/momo.png', 'assets/pip.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png',
+  'assets/momo.png', 'assets/pip.png', 'assets/lumi.png', 'assets/zing.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png',
   ...['body', 'mouth', 'mouth-open', 'mouth-laugh', 'arm-left', 'arm-right']
-    .flatMap(part => ['momo', 'pip'].map(monster => `assets/parts/${monster}-${part}.png`)),
-  'assets/parts/momo-hair.png', 'assets/parts/pip-horn-left.png', 'assets/parts/pip-horn-right.png'
+    .flatMap(part => ['momo', 'pip', 'lumi', 'zing'].map(monster => `assets/parts/${monster}-${part}.png`)),
+  'assets/parts/momo-hair.png',
+  'assets/parts/pip-horn-left.png', 'assets/parts/pip-horn-right.png',
+  'assets/parts/lumi-hair.png', 'assets/parts/lumi-horn-left.png', 'assets/parts/lumi-horn-right.png',
+  'assets/parts/zing-hair.png'
 ];
 
 self.addEventListener('install', event => {

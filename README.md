@@ -1,14 +1,14 @@
 # Monsterfreunde
 
-Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln, hüpfen und tanzen lassen.
+Eine kleine Webapp für Android im Hochformat: Momo, Pip, Lumi oder Zing auswählen, füttern, kitzeln und bewegen lassen.
 
 ## Aktueller Stand
 
-- Zwei eigene Monster mit jeweils acht gezeichneten Posen.
+- Vier eigene Monster mit deutlich unterschiedlichen Silhouetten: Momo, Pip, das kosmische Sternchen Lumi und der langbeinige Gummiwurm Zing.
 - Baukasten-Rig statt Posenwechsel: Körper, Haare beziehungsweise Hörner, Augenweiß, drei Münder und beide Arme sind einzelne Teile, die per CSS-Transform bewegt werden. Pupillen und Lider werden im Code gezeichnet. Alle Bewegungen laufen über Federn, sodass jede Aktion aus der aktuellen Haltung heraus beginnt und weich in die Ruhehaltung zurückkehrt. Kein Morphen, kein Schnitt.
 - Blinzeln, Atmen, Begrüßung, Hüpfen und Tanzen. Kitzeln in fünf Zonen: Kopf, Bauch, Füße und beide Seiten reagieren verschieden.
 - Augen, Pupillen, Lider und Brauen im Code, mit Ausdrücken von lachend bis angewidert.
-- Ein besonderer Move pro Monster: Momos Wirbel und Pips Salto.
+- Ein besonderer Move pro Monster: Momos Wirbel, Pips Salto, Lumis Sternenfunkeln und Zings Superschlängler.
 - Leben im Leerlauf: Wer eine Weile nichts antippt, sieht das Monster umherschauen, hüpfen oder winken. Landungen vibrieren kurz auf Geräten, die das können.
 - Füttern mit Keks, Apfel und Saft: Der Snack fliegt zum Mund, das Monster jubelt, kaut und schluckt. Jedes Monster hat einen Lieblingssnack und einen, den es verweigert.
 - Federnde Körperbewegung und zum Sprung passender Schatten.
@@ -42,6 +42,8 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `dist/assets/parts/`, `dist/assets/rig.json` | Rig-Teile und Rig-Daten, vorerst aus den Posen geschnitten |
 | `scripts/extract-parts.py` | Schneidet Körper, Augen, Münder und Arme aus den vorhandenen Posen |
 | `scripts/prepare-motion.py` | Leitet Landmarken aus den Posen ab, die `extract-parts.py` zum Finden der Hände nutzt |
+| `scripts/strip-fake-alpha.py` | Entfernt den künstlichen Schachbretthintergrund der Zing-Grafik reproduzierbar |
+| `scripts/preview-server.py`, `package.json` | Lokaler Vorschau-Server, auch für die Sites-Vorschau |
 | `asset-prompts.json` | Entstehungsbeschreibungen der Grafiken |
 | `IDEEN.md` | Ideen und vorgeschlagene nächste Ausbauschritte |
 | `ANIMATION.md` | Konzept für ein Baukasten-Rig als nächste Animationsgrundlage |

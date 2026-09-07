@@ -39,6 +39,12 @@ const MonsterMotion = (() => {
     // Pip's trick: a high jump with a somersault and a proud landing.
     flip:{keys:[[0,0],[.3,5],[.5,6],[1.15,6],[1.3,5],[2.0,5],[2.3,0]],still:6,
       moments:[{at:.3,kind:'takeoff'},{at:.45,kind:'whirl'},{at:1.3,kind:'land'},{at:1.45,kind:'tada'}]},
+    // Lumi floats in a slow star-shaped arc while her antennae shimmer.
+    sparkle:{keys:[[0,0],[.28,5],[.55,5],[2.15,5],[2.45,7],[2.85,0]],still:5,
+      moments:[{at:.3,kind:'sparkle'},{at:.9,kind:'sparkle'},{at:1.5,kind:'sparkle'},{at:2.18,kind:'tada'},{at:2.4,kind:'land'}]},
+    // Zing bends like a rubber hose, alternating long and short S-curves.
+    squiggle:{keys:[[0,0],[.25,2],[.72,3],[1.19,2],[1.66,3],[2.13,2],[2.6,7],[3.05,0]],still:3,
+      moments:[{at:.25,kind:'stretch'},{at:.72,kind:'pop'},{at:1.19,kind:'stretch'},{at:1.66,kind:'pop'},{at:2.13,kind:'stretch'},{at:2.58,kind:'tada'}]},
   };
   for (const clip of Object.values(clips)) clip.duration=clip.keys[clip.keys.length-1][0];
   // Whole-body transform for the current instant: idle breathing plus the
@@ -139,6 +145,32 @@ const MonsterMotion = (() => {
         const bounce=Math.max(0,Math.sin((t-1.7)*12));
         result.y-=3*bounce*envelope; result.sy+=.015*bounce*envelope;
       }
+    } else if (action==='sparkle') {
+      if (t<.3) {
+        const crouch=Math.sin(t/.3*Math.PI);
+        result.sx+=.055*crouch; result.sy-=.075*crouch;
+      } else if (t<2.4) {
+        const rise=smooth((t-.3)/.32)*smooth((2.4-t)/.35);
+        const drift=Math.sin((t-.3)*Math.PI*1.35);
+        result.height=(32+6*Math.sin(t*5.2))*rise;
+        result.x=9*drift*rise; result.r=5.5*drift*rise;
+        result.sx-=.025*rise+.018*Math.cos(t*6.1)*rise;
+        result.sy+=.04*rise+.025*Math.cos(t*6.1)*rise;
+      } else {
+        const dt=t-2.4,recoil=Math.exp(-dt*11)*Math.sin(dt*28);
+        result.sx+=.075*recoil; result.sy-=.095*recoil;
+      }
+    } else if (action==='squiggle') {
+      const active=smooth(t/.22)*smooth((duration-t)/.36);
+      const wave=Math.sin((t-.18)*Math.PI/.47);
+      const snap=Math.sin((t-.18)*Math.PI/.235);
+      // Pivoting at the feet makes Zing's unusually tall body describe a
+      // large S while the alternating stretch keeps it rubbery, not rigid.
+      result.x=15*wave*active;
+      result.r=10.5*wave*active;
+      result.y-=4*Math.max(0,snap)*active;
+      result.sx-=.065*Math.abs(wave)*active;
+      result.sy+=.085*Math.abs(wave)*active+.025*snap*active;
     } else if (action==='yuck') {
       const shake=Math.sin(t*22)*Math.exp(-t*1.2);
       result.r=5*shake*envelope; result.x=-6*shake*envelope;

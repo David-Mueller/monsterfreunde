@@ -1,7 +1,7 @@
 {
   "name": "Monsterfreunde",
   "short_name": "Monster",
-  "description": "Momo und Pip auswählen, kitzeln, hüpfen und tanzen lassen.",
+  "description": "Momo, Pip, Lumi und Zing auswählen, füttern, kitzeln, hüpfen und tanzen lassen.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",

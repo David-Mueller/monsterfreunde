@@ -79,7 +79,7 @@ def save(cell, mask, path):
     return box
 
 rig = {}
-for name in ('momo', 'pip'):
+for name in ('momo', 'pip', 'lumi', 'zing'):
     frames, n = cells(name)
     p0 = frames[0]
     opaque = p0[..., 3] > 200
@@ -91,28 +91,41 @@ for name in ('momo', 'pip'):
     dark, white = dark_mask(p0), white_mask(p0)
     candidates = p0[opaque & ~dark & ~white][:, :3]
     skin = np.median(candidates, axis=0)
+    if name == 'zing':
+        # The fake-alpha recovery necessarily retains some pale edge pixels;
+        # use the dominant interior pink for lids and face cleanup.
+        skin = np.array([252, 122, 181], dtype=float)
     def skin_mask(cell):
         return (np.abs(cell[..., :3].astype(float)-skin).sum(2) < 90) & (cell[..., 3] > 200)
     # Torso: skin region opened with a disk wider than an arm.
     torso = largest(ndimage.binary_opening(ndimage.binary_fill_holes(skin_mask(p0)), structure=disk(int(n*.055))))
     torso_wide = ndimage.binary_dilation(torso, structure=disk(int(n*.02)))
-    # Accent parts by colour: Momo's cobalt hair, Pip's raspberry horns. They
+    # Accent parts by colour: hair, crests and horns. They
     # go behind the body and can swing on their own. The mask is widened a
     # little so a small turn never opens a gap against the face.
     rgb = p0[..., :3].astype(int)
+    yy = np.indices(opaque.shape)[0]
     accent = opaque & ~skin_mask(p0) & ~white & ~dark
     accent_parts = {}
     if name == 'momo':
         accent_parts['hair'] = accent & (rgb[..., 2] > rgb[..., 1] + 30)
-    else:
+    elif name == 'pip':
         accent_parts['horns'] = accent & (rgb[..., 0] > 140) & (rgb[..., 1] < 110)
+    elif name == 'lumi':
+        accent_parts['hair'] = accent & (rgb[..., 2] > rgb[..., 0] + 35) & (rgb[..., 1] < 130)
+        # The chest star shares the horn colour, so only keep yellow above
+        # the face for the independently swaying antenna-horns.
+        accent_parts['horns'] = accent & (rgb[..., 0] > 190) & (rgb[..., 1] > 120) & (rgb[..., 2] < 130) & (yy < n * .42)
+    elif name == 'zing':
+        accent_parts['hair'] = accent & (rgb[..., 2] > rgb[..., 0] + 55) & (rgb[..., 1] < 155)
     accent_masks = {}
     for part_name, raw in accent_parts.items():
         cleaned = ndimage.binary_opening(raw, structure=disk(2))
         cleaned = ndimage.binary_fill_holes(ndimage.binary_closing(cleaned, structure=disk(4)))
         labels, count = ndimage.label(cleaned)
         sizes = ndimage.sum(cleaned, labels, range(1, count+1))
-        keep = [i+1 for i, size in enumerate(sizes) if size > n*n*.002]
+        minimum = n * n * (.00025 if name == 'zing' else .002)
+        keep = [i+1 for i, size in enumerate(sizes) if size > minimum]
         accent_masks[part_name] = np.isin(labels, keep)
     # Body: pose 0 without the arm stubs beside the torso.
     stubs = np.zeros_like(opaque)
@@ -123,26 +136,67 @@ for name in ('momo', 'pip'):
     body = opaque & ~ndimage.binary_dilation(stubs, structure=disk(2))
     for mask in accent_masks.values():
         body &= ~mask
+    if name == 'lumi':
+        # The softly shaded arm edges are wider than the skin-colour mask.
+        # Keep only the central torso through the arm band; animated arms are
+        # placed back on top by the rig.
+        gy = np.indices(opaque.shape)[0]
+        arm_band = (gy > n * .20) & (gy < n * .83)
+        radius = n * .17
+        filled_skin = ndimage.binary_fill_holes(skin_mask(p0))
+        eroded = ndimage.distance_transform_edt(filled_skin) >= radius
+        clean_torso = largest(ndimage.distance_transform_edt(~eroded) <= radius)
+        clean_torso = ndimage.binary_dilation(clean_torso, structure=disk(2))
+        body &= ~(arm_band & ~clean_torso)
+    if name == 'zing':
+        # Zing's arms are thinner than their antialiased outline. Remove the
+        # complete side zones, including highlights, before rig arms are
+        # placed over the shoulders.
+        gy = np.indices(opaque.shape)[0]
+        arm_band = (gy > n * .32) & (gy < n * .61)
+        clean_torso = ndimage.binary_dilation(torso, structure=disk(2))
+        body &= ~(arm_band & ~clean_torso)
+    if name in ('lumi', 'zing'):
+        body = largest(body)
     # Face features are removed from the body and drawn as separate parts.
     whites = white & ndimage.binary_opening(white, structure=disk(4))
     labels, count = ndimage.label(whites)
     sizes = ndimage.sum(whites, labels, range(1, count+1))
-    eye_ids = sorted(range(1, count+1), key=lambda i: -sizes[i-1])[:2]
-    eye_ids.sort(key=lambda i: np.where(labels == i)[1].mean())
-    # Pupils overlap the rim of the eye white, so the eye is the hull of the
-    # white plus every dark blob touching it.
     dark_labels, dark_count = ndimage.label(dark)
-    def eye_mask(white_part):
-        touching = np.unique(dark_labels[ndimage.binary_dilation(white_part, structure=disk(3)) & dark])
-        pupil = np.isin(dark_labels, touching[touching > 0])
-        return ndimage.binary_dilation(hull(white_part | pupil), structure=disk(2))
-    eye_masks = [eye_mask(labels == i) for i in eye_ids]
+    if name == 'zing':
+        # Zing's playfully staggered eyes overlap into one white shape. Build
+        # two clean oval eye boxes around the two pupil components instead.
+        dark_sizes = ndimage.sum(dark, dark_labels, range(1, dark_count+1))
+        pupil_ids = sorted(range(1, dark_count+1), key=lambda i: -dark_sizes[i-1])[1:3]
+        pupil_ids.sort(key=lambda i: np.where(dark_labels == i)[1].mean())
+        eye_masks = []
+        grid_y, grid_x = np.indices(opaque.shape)
+        for pupil_id in pupil_ids:
+            py, px = np.where(dark_labels == pupil_id)
+            cx, cy = px.mean(), py.mean()
+            rx = max(18, (px.max() - px.min() + 1) * 1.12)
+            ry = max(21, (py.max() - py.min() + 1) * 1.12)
+            eye_masks.append(((grid_x - cx) / rx) ** 2 + ((grid_y - cy) / ry) ** 2 <= 1)
+    else:
+        eye_ids = sorted(range(1, count+1), key=lambda i: -sizes[i-1])[:2]
+        eye_ids.sort(key=lambda i: np.where(labels == i)[1].mean())
+        # Pupils overlap the rim of the eye white, so the eye is the hull of
+        # the white plus every dark blob touching it.
+        def eye_mask(white_part):
+            touching = np.unique(dark_labels[ndimage.binary_dilation(white_part, structure=disk(3)) & dark])
+            pupil = np.isin(dark_labels, touching[touching > 0])
+            return ndimage.binary_dilation(hull(white_part | pupil), structure=disk(2))
+        eye_masks = [eye_mask(labels == i) for i in eye_ids]
     eyes = np.zeros_like(opaque)
     for mask in eye_masks:
         eyes |= mask
     white_labels, _ = ndimage.label(white)
     def mouth_mask(cell_dark, cell_white_labels):
         lips = largest(cell_dark)
+        if name == 'zing':
+            # The two white eyes touch each other and sit close to the mouth;
+            # filling the dark lip contour keeps only the teeth inside it.
+            return ndimage.binary_fill_holes(ndimage.binary_dilation(lips, structure=disk(2)))
         touching = np.unique(cell_white_labels[ndimage.binary_dilation(lips, structure=disk(3)) & (cell_white_labels > 0)])
         teeth = np.isin(cell_white_labels, touching)
         return ndimage.binary_fill_holes(ndimage.binary_dilation(lips | teeth, structure=disk(2)))
@@ -159,7 +213,27 @@ for name in ('momo', 'pip'):
             brows |= dark_labels == i
     brows = ndimage.binary_dilation(brows, structure=disk(3))
     hole = ndimage.binary_dilation(eyes | mouth, structure=disk(3)) & body | brows & body
-    body_image = inpaint(p0, hole)
+    if name in ('lumi', 'zing'):
+        # Their softly shaded sheets need a clean facial canvas rather than
+        # blurred remnants under the code-drawn eyes and mouth. Zing's eye
+        # whites also overlap, so his region is slightly taller and narrower.
+        gy, gx = np.indices(opaque.shape)
+        if name == 'zing':
+            face = ((gx - n * .55) / (n * .13)) ** 2 + ((gy - n * .23) / (n * .18)) ** 2 < 1
+        else:
+            face = ((gx - n * .50) / (n * .23)) ** 2 + ((gy - n * .46) / (n * .25)) ** 2 < 1
+        features = ndimage.binary_dilation((white | dark) & face, structure=disk(5))
+        hole |= features & body
+        body_image = p0.copy()
+        body_image[hole, :3] = skin.astype(np.uint8)
+        if name == 'lumi':
+            # Paint out the inner contour/highlight strokes of the original
+            # resting arms too; their silhouette has already been trimmed.
+            cheeks = opaque & (rgb[..., 0] > 235) & (rgb[..., 1] < 190) & (rgb[..., 2] < 225)
+            side_arms = body & ~cheeks & (gy > n * .48) & (gy < n * .82) & ((gx < n * .34) | (gx > n * .66))
+            body_image[side_arms, :3] = skin.astype(np.uint8)
+    else:
+        body_image = inpaint(p0, hole)
     parts = {}
     parts['body'] = {'box': save(body_image, body, OUT/f'{name}-body.png'), 'z': 2}
     for part_name, mask in accent_masks.items():
@@ -193,7 +267,8 @@ for name in ('momo', 'pip'):
     cy, cx = ndimage.center_of_mass(torso5)
     for side in ('left', 'right'):
         arm = component_at(skin_mask(p5) & ~torso5, *hand(5, side))
-        if arm is None or arm.sum() < n*n*.004:
+        minimum_arm = n * n * (.0008 if name == 'zing' else .004)
+        if arm is None or arm.sum() < minimum_arm:
             continue
         arm = ndimage.binary_fill_holes(ndimage.binary_closing(arm, structure=disk(3)))
         ys, xs = np.where(arm)

@@ -19,6 +19,22 @@ const monsters = {
       'tickle-head': ['Meine Hörner!', 'Hahaha, nicht am Kopf!'], 'tickle-feet': ['Nicht die Füße!', 'Hihi, ich muss hüpfen!'], 'tickle-side': ['Hahaha, die Seite!', 'Nicht da!'] },
     taste: { cookie: ['yuck', 'Bäh, zu süß!'], apple: ['love', 'Knack! Lecker!', 'Mein Lieblingsapfel!'], juice: ['fine', 'Gluck, gluck!', 'Erfrischend!'] },
     trick: { clip: 'flip', name: 'Salto', label: 'Pips Salto', lines: ['Saaalto!', 'Tadaa!'] }
+  },
+  lumi: {
+    name: 'Lumi', personality: 'Das Sternchen', description: 'Lumi, ein verträumtes lilafarbenes Sternenmonster',
+    sheet: 'assets/lumi.png', theme: '#332568', tempo: .92, blink: [3900, 1900], voice: 520,
+    lines: { tickle: ['Hihi … Sternenstaub!', 'Das funkelt!', 'Kicher-kicher-kicher!'], jump: ['Schwerelos!', 'Fast bis zum Mond!'], dance: ['Tanz mit den Sternen!', 'Funkel im Takt!'],
+      'tickle-head': ['Meine Fühler kribbeln!', 'Hui, Sternenalarm!'], 'tickle-feet': ['Hihi, meine Sternenfüße!', 'Nicht da unten!'], 'tickle-side': ['Da bin ich superkitzelig!', 'Hihi, die Seite!'] },
+    taste: { cookie: ['fine', 'Knusperstern!', 'Ein Keks im All!'], apple: ['yuck', 'Der ist mir zu erdig!'], juice: ['love', 'Sternensaft!', 'Mmmh, kosmisch!'] },
+    trick: { clip: 'sparkle', name: 'Funkeln', label: 'Lumis Sternenfunkeln', effect: 'sparkle', lines: ['Sternenlicht an!', 'Funkel, funkel!'] }
+  },
+  zing: {
+    name: 'Zing', personality: 'Der Gummiwurm', description: 'Zing, ein pinker Gummiwurm auf langen Stelzenbeinen',
+    sheet: 'assets/zing.png', theme: '#075a70', tempo: 1.24, blink: [2200, 1400], voice: 445,
+    lines: { tickle: ['Ich kringel mich!', 'Hihihi, Wurmalarm!', 'Mein Bauch wackelt!'], jump: ['Beine wie Sprungfedern!', 'Ziiing!'], dance: ['Schlängel mit!', 'S-Kurve links, S-Kurve rechts!'],
+      'tickle-head': ['Nicht die drei Haare!', 'Hihi, oben kribbelt es!'], 'tickle-feet': ['Meine Flossenfüße!', 'Hui, lange Leitung!'], 'tickle-side': ['Ein Wurm hat nur Seiten!', 'Hahaha, Volltreffer!'] },
+    taste: { cookie: ['fine', 'Krümelkurve!', 'Knack und weg!'], apple: ['love', 'Ein Apfel für den Wurm!', 'Knackig!'], juice: ['yuck', 'Glitschig bin ich schon genug!'] },
+    trick: { clip: 'squiggle', name: 'Schlängeln', label: 'Zings Superschlängler', effect: 'squiggle', lines: ['Gummiwurm-Modus!', 'Schlängel-Schabernack!'] }
   }
 };
 const snackGlyphs = { cookie: '🍪', apple: '🍎', juice: '🧃' };
@@ -122,7 +138,7 @@ function trick() {
   startClip(move.clip);
   say(move.lines[Math.floor(Math.random() * move.lines.length)], currentClip.duration / currentClip.speed * 1000 + 200);
   trickButton.classList.add('active');
-  burst('jump');
+  burst(move.effect || 'jump');
 }
 
 // Offers a snack: it flies to the mouth, then the monster eats or refuses it.
@@ -209,7 +225,9 @@ function burst(action, count = 9) {
   const box = $('.particles');
   if (count >= 9) box.replaceChildren();
   if (reduced.matches) return;
-  const glyphs = action === 'dance' ? ['♪', '♫', '♪'] : ['✦', '·', '✧'];
+  const glyphs = action === 'dance' ? ['♪', '♫', '♪']
+    : action === 'sparkle' ? ['★', '✦', '·']
+      : action === 'squiggle' ? ['〰', '∿', '✧'] : ['✦', '·', '✧'];
   const offset = Math.random() * Math.PI * 2;
   for (let i = 0; i < count; i++) {
     const particle = document.createElement('span');

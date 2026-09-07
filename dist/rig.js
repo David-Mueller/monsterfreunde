@@ -9,7 +9,7 @@
 // {open 0..1, happy 0..1, gazeX, gazeY}, mouth variant and mouth scale, and
 // hair {r, sx, sy} for hair or horns that swing behind the body.
 
-const PUPIL = { momo: '#171449', pip: '#4a0f2e' };
+const PUPIL = { momo: '#171449', pip: '#4a0f2e', lumi: '#35106f', zing: '#11145a' };
 
 class MonsterRig {
   constructor(root, data, key) {
@@ -249,6 +249,28 @@ const RigMotion = (() => {
       else if (t < 1.3) { both(state, 240, 12); state.mouth = 'mouth-open'; }
       else if (t < 1.7) { const dt = t - 1.3, recoil = Math.exp(-dt * 11) * Math.sin(dt * 28); both(state, REST.armLeft + 24 * recoil); }
       else { const proud = smooth((t - 1.7) / .2) * smooth((duration - t) / .25); both(state, REST.armLeft + (240 - REST.armLeft) * proud, 10 * proud); state.eyes.happy = .6 * proud; state.mouth = proud > .5 ? 'mouth-open' : 'mouth'; }
+    } else if (action === 'sparkle') {
+      const floating = smooth(t / .3) * smooth((duration - t) / .42);
+      const shimmer = Math.sin(t * 5.2);
+      both(state, REST.armLeft + (230 - REST.armLeft) * floating + 6 * shimmer * floating, 11 * floating);
+      state.eyes.gazeY = -.55 * floating;
+      state.eyes.gazeX = .25 * Math.sin(t * 2.7) * floating;
+      state.eyes.happy = .35 * floating; state.eyes.browLift = .35 * floating;
+      state.mouth = floating > .45 ? 'mouth-open' : 'mouth';
+      state.mouthScaleY = 1 + .12 * Math.max(0, shimmer) * floating;
+      state.hairR = 7 * Math.sin(t * 5.2 + .7) * floating;
+    } else if (action === 'squiggle') {
+      const active = smooth(t / .22) * smooth((duration - t) / .36);
+      const wave = Math.sin((t - .18) * Math.PI / .47);
+      state.armLeft = REST.armLeft + ((wave > 0 ? 225 : 165) - REST.armLeft) * active;
+      state.armRight = REST.armRight + ((wave > 0 ? 15 : -45) - REST.armRight) * active;
+      state.armLeftLift = 8 * active; state.armRightLift = 8 * active;
+      state.eyes.gazeX = -.65 * wave * active;
+      state.eyes.gazeY = -.12 * active;
+      state.eyes.happy = .45 * active; state.eyes.browLift = .2 * active;
+      state.mouth = active > .45 ? 'mouth-laugh' : 'mouth';
+      state.mouthScaleX = 1 + .12 * Math.abs(wave) * active;
+      state.hairR = -10 * wave * active;
     }
     return state;
   }

@@ -1,0 +1,8 @@
+{
+  "name": "monsterfreunde",
+  "private": true,
+  "scripts": {
+    "dev": "python3 scripts/preview-server.py",
+    "start": "python3 -m http.server ${PORT:-5173} --directory dist"
+  }
+}

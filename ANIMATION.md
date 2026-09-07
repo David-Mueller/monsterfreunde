@@ -4,7 +4,7 @@ Stand: 7. September 2026. Dieses Dokument beschreibt, warum das heutige Morphen 
 
 ## Ausgangslage
 
-Heute gibt es pro Monster acht vollständige Zeichnungen. Die Hauptseite schneidet zwischen ihnen hart um; ein Versuch, Zwischenbilder durch Verformung zu berechnen, wurde nach Tests auf dem Telefon wieder entfernt, weil Gesichter und Hände Artefakte zeigten. Drei Probleme lassen sich mit ganzen Zeichnungen nicht lösen:
+Als Ausgangsmaterial gibt es pro Monster mehrere vollständige Zeichnungen. Die App verwendet daraus extrahierte Einzelteile und animiert sie als Rig; ein früherer Versuch, vollständige Posen zu überblenden, wurde entfernt, weil dabei unscharfe Doppelbilder entstanden. Drei Probleme lassen sich mit ganzen Zeichnungen nicht lösen:
 
 - Die Zeichnungen sind untereinander nicht konsistent. Momos hängender Arm ist ein kurzer Stummel, der erhobene Arm ist dreimal so lang. Kein Verfahren kann das ohne Stauchen oder Strecken überbrücken.
 - Jeder Schnitt zwischen zwei Zeichnungen ist sichtbar, weil Haare, Hände und Körperkontur anders gezeichnet sind.
@@ -21,7 +21,7 @@ Jedes Monster wird einmal in Neutralstellung gezeichnet, aber in einzelnen Teile
 | Haare hinten | Kopfmitte | – | Hinter dem Körper, damit sie wackeln können |
 | Körper mit Kopf | Fußmitte | – | Ein Stück, ohne Arme, Beine und Gesicht |
 | Bauchfleck / Brusttuft | Körpermitte | – | Nur zur Sicherheit separat, falls es mitwackeln soll |
-| Hörner | Kopfoberkante | – | Nur Pip |
+| Hörner / Antennen | Kopfoberkante | – | Je nach Figur, zum Beispiel Pip und Lumi |
 | Haare vorn | Kopfmitte | – | Vor dem Gesicht, für Momos Haarwirbel |
 | Augen | – | – | Entfallen: Augenweiß, Pupillen, Lider und Brauen werden im Code gezeichnet |
 | Mund | Mundmitte | zu, lächelnd, offen, lachend, O | Für Sprechen, Kauen und Lachen |
@@ -62,7 +62,7 @@ Risiko: Das Bildwerkzeug hält Raster und Stil nicht immer exakt ein. Erfahrungs
 
 ### Weg B: Teile aus den vorhandenen Zeichnungen schneiden
 
-Als Zwischenlösung lassen sich Teile aus den vorhandenen Posen gewinnen: Körper aus Pose 0 mit weggerechneten Armstummeln, erhobene Arme aus Pose 5, Augen und Mund per Farberkennung, lachender Mund aus Pose 7. Das ist gröber, braucht aber keine neue Grafik und reicht, um Rig, Editor und Timelines zu bauen und auf dem Telefon zu prüfen. Die sauberen Teile aus Weg A ersetzen sie später eins zu eins.
+Als Zwischenlösung lassen sich Teile aus den vorhandenen Posen gewinnen: Körper mit weggerechneten Armstummeln, Arme, Haare beziehungsweise Hörner sowie verschiedene Münder. Das Extraktionsskript enthält Sonderfälle für ungewöhnliche Formen – etwa Zings überlappende Augen und sehr dünne Arme. Das ist gröber als eigens gezeichnete Teile-Sheets, reicht aber für spielbare Timelines und Tests auf dem Telefon.
 
 ## Rig-Editor
 

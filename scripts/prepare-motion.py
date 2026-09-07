@@ -28,6 +28,26 @@ EXTREMITIES = {
         [.17,.38,.83,.38,.42,.72,.58,.72],
         [.29,.49,.71,.49,.39,.88,.60,.88],
     ],
+    'lumi': [
+        [.16,.72,.83,.72,.39,.91,.61,.91],
+        [.16,.72,.83,.72,.39,.91,.61,.91],
+        [.13,.29,.87,.66,.35,.91,.61,.91],
+        [.12,.67,.88,.29,.42,.91,.76,.86],
+        [.10,.40,.82,.72,.39,.91,.61,.91],
+        [.12,.35,.88,.34,.39,.91,.61,.91],
+        [.13,.45,.87,.45,.43,.80,.58,.80],
+        [.39,.57,.64,.57,.39,.91,.61,.91],
+    ],
+    'zing': [
+        [.44,.55,.67,.55,.40,.91,.66,.91],
+        [.44,.55,.65,.54,.40,.91,.66,.91],
+        [.30,.33,.70,.47,.39,.89,.67,.91],
+        [.32,.47,.65,.32,.46,.91,.76,.85],
+        [.36,.30,.67,.52,.40,.91,.66,.91],
+        [.36,.28,.64,.28,.40,.91,.66,.91],
+        [.32,.32,.69,.32,.27,.62,.78,.63],
+        [.42,.29,.60,.29,.40,.91,.66,.91],
+    ],
 }
 
 def components(mask, minimum):
@@ -49,7 +69,7 @@ def box_points(box):
     return [[(l+r)/2, t], [(l+r)/2, b], [l, (t+b)/2], [r, (t+b)/2]]
 
 result = {}
-for name in ('momo', 'pip'):
+for name in EXTREMITIES:
     image = np.asarray(Image.open(ROOT/'dist/assets'/f'{name}.png'))
     h, w = image.shape[:2]
     poses = []
@@ -60,7 +80,9 @@ for name in ('momo', 'pip'):
         opaque = cell[:,:,3] > 235
         white = (rgb.min(2)>205) & ((rgb.max(2)-rgb.min(2))<50) & opaque
         dark = (rgb[:,:,0]<145) & (rgb[:,:,1]<75) & (rgb[:,:,2]<180) & opaque
-        dark_parts = components(dark, 300)
+        # Small or vertically staggered eyes (Zing) need a lower component
+        # floor than the large round eyes of Momo and Pip.
+        dark_parts = components(dark, 50)
         mouth = dark_parts[0][1]
         eyes = [box for _,box in components(white, 300) if box[1]<.45 and box[3]<.56]
         if len(eyes) != 2:
