@@ -147,7 +147,18 @@ for name in ('momo', 'pip'):
         teeth = np.isin(cell_white_labels, touching)
         return ndimage.binary_fill_holes(ndimage.binary_dilation(lips | teeth, structure=disk(2)))
     mouth = mouth_mask(dark, white_labels)
-    hole = ndimage.binary_dilation(eyes | mouth, structure=disk(3)) & body
+    # Eyebrows are small dark strokes above the eyes; they are drawn in code
+    # so they can frown, and are painted out of the body here.
+    eye_top = min(int(np.where(m)[0].min()) for m in eye_masks)
+    eye_bottom = max(int(np.where(m)[0].max()) for m in eye_masks)
+    dark_labels, dark_count = ndimage.label(dark)
+    brows = np.zeros_like(opaque)
+    for i in range(1, dark_count+1):
+        ys, xs = np.where(dark_labels == i)
+        if 15 < len(ys) < 900 and ys.max() < eye_top + (eye_bottom-eye_top)*.35 and ys.min() > eye_top - (eye_bottom-eye_top)*1.2:
+            brows |= dark_labels == i
+    brows = ndimage.binary_dilation(brows, structure=disk(3))
+    hole = ndimage.binary_dilation(eyes | mouth, structure=disk(3)) & body | brows & body
     body_image = inpaint(p0, hole)
     parts = {}
     parts['body'] = {'box': save(body_image, body, OUT/f'{name}-body.png'), 'z': 2}
@@ -167,9 +178,9 @@ for name in ('momo', 'pip'):
             centre = [int((eye_masks[0].nonzero()[1].mean() + eye_masks[1].nonzero()[1].mean()) / 2), int(eye_masks[0].nonzero()[0].mean())]
             parts[part_name] = {'box': box, 'pivot': centre, 'z': 1}
     for side, mask in zip(('left', 'right'), eye_masks):
-        eye = p0.copy()
-        eye[ndimage.binary_erosion(mask, structure=disk(3)), :3] = 255  # pupils are drawn in code
-        parts[f'eye-{side}'] = {'box': save(eye, mask, OUT/f'{name}-eye-{side}.png'), 'z': 3}
+        # Eye whites, pupils, lids and brows are drawn in code; only the box is needed.
+        ys, xs = np.where(mask)
+        parts[f'eye-{side}'] = {'box': [int(xs.min()), int(ys.min()), int(xs.max()+1), int(ys.max()+1)], 'z': 4}
     parts['mouth'] = {'box': save(p0, mouth, OUT/f'{name}-mouth.png'), 'z': 3}
     for variant, frame in (('open', 5), ('laugh', 7)):
         cell = frames[frame]
@@ -203,7 +214,9 @@ for name in ('momo', 'pip'):
     for key in list(parts):
         if key.startswith('eye') or key.startswith('mouth'):
             parts[key]['z'] = 4
-    rig[name] = {'cell': n, 'skin': [int(v) for v in skin], 'parts': parts}
+    brow_pixels = p0[brows & dark][:, :3]
+    brow_colour = [int(v) for v in np.median(brow_pixels, axis=0)] if len(brow_pixels) else [30, 20, 60]
+    rig[name] = {'cell': n, 'skin': [int(v) for v in skin], 'brow': brow_colour, 'parts': parts}
     print(name, {k: v['box'] for k, v in parts.items()})
 
 (ROOT/'dist/assets/rig.json').write_text(json.dumps(rig, separators=(',', ':'))+'\n')

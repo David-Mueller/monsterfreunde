@@ -35,13 +35,16 @@ class MonsterRig {
         element.alt = '';
         element.draggable = false;
       } else {
-        const white = document.createElement('img');
-        white.src = `assets/parts/${key}-${name}.png`; white.alt = ''; white.className = 'eye-white'; white.draggable = false;
+        // Eye white, pupil, lids and brow are plain shapes: clean edges, no
+        // leftovers from the drawing, and every expression is a number.
+        const white = document.createElement('span'); white.className = 'eye-white';
         const pupil = document.createElement('span'); pupil.className = 'pupil'; pupil.style.background = PUPIL[key] || '#222';
         const lid = document.createElement('span'); lid.className = 'lid';
         const lower = document.createElement('span'); lower.className = 'lid lower';
-        element.append(white, pupil, lower, lid);
-        element.pupil = pupil; element.lid = lid; element.lower = lower;
+        const brow = document.createElement('span'); brow.className = 'brow';
+        brow.style.background = `rgb(${(this.data.brow || [30, 20, 60]).join(',')})`;
+        element.append(white, pupil, lower, lid, brow);
+        element.pupil = pupil; element.lid = lid; element.lower = lower; element.brow = brow;
       }
       root.append(element);
       this.parts[name] = element;
@@ -70,6 +73,8 @@ class MonsterRig {
     }
     const eyes = state.eyes || {};
     const open = eyes.open ?? 1, happy = eyes.happy ?? 0;
+    // Brows: `frown` tilts the inner ends down (angry) or up (sad), `browLift` raises both.
+    const frown = eyes.frown ?? 0, browLift = eyes.browLift ?? 0;
     for (const side of ['left', 'right']) {
       const eye = this.parts[`eye-${side}`];
       if (!eye) continue;
@@ -77,14 +82,17 @@ class MonsterRig {
       eye.lower.style.transform = `scaleY(${happy * .62})`;
       eye.pupil.style.transform = `translate(${(eyes.gazeX || 0) * 18}%,${(eyes.gazeY || 0) * 18}%)`;
       eye.pupil.style.opacity = open < .25 ? '0' : '1';
+      const tilt = (side === 'left' ? 1 : -1) * (-8 + 26 * frown);
+      eye.brow.style.transform = `translateY(${-browLift * 40 - frown * 18}%) rotate(${tilt}deg)`;
     }
-    const mouth = state.mouth || 'mouth';
+    // `frown` as a mouth variant flips the closed smile upside down.
+    const mouth = state.mouth === 'frown' ? 'mouth' : (state.mouth || 'mouth');
     for (const name of ['mouth', 'mouth-open', 'mouth-laugh']) {
       const element = this.parts[name];
       if (!element) continue;
       const shown = name === mouth || (!this.parts[mouth] && name === 'mouth');
       element.style.visibility = shown ? 'visible' : 'hidden';
-      if (shown) element.style.transform = `scale(${state.mouthScaleX ?? 1},${state.mouthScaleY ?? 1})`;
+      if (shown) element.style.transform = `scale(${state.mouthScaleX ?? 1},${(state.mouthScaleY ?? 1) * (state.mouth === 'frown' ? -1 : 1)})`;
     }
     const hair = state.hair || {};
     for (const name of ['hair', 'horn-left', 'horn-right']) {
@@ -106,12 +114,12 @@ const RigMotion = (() => {
   const REST = { armLeft: 112, armRight: 68 };
   const mirror = angle => 180 - angle;
   function both(state, left, lift = 0) { state.armLeft = left; state.armRight = mirror(left); state.armLeftLift = lift; state.armRightLift = lift; }
-  function pose(action, t, duration, clock) {
+  function pose(action, t, duration, clock, options = {}) {
     const state = {
       armLeft: REST.armLeft + Math.sin(clock * 2.1) * 2, armRight: REST.armRight - Math.sin(clock * 2.1 + .4) * 2,
       armLeftLift: 0, armRightLift: 0,
-      eyes: { open: 1, happy: 0, gazeX: .18 * Math.sin(clock * .7), gazeY: .1 * Math.sin(clock * .5 + 1) },
-      mouth: 'mouth', mouthScaleX: 1, mouthScaleY: 1
+      eyes: { open: 1, happy: 0, gazeX: .18 * Math.sin(clock * .7), gazeY: .1 * Math.sin(clock * .5 + 1), frown: 0, browLift: 0 },
+      mouth: 'mouth', mouthScaleX: 1, mouthScaleY: 1, hairR: 0
     };
     if (!action || action === 'settle') return state;
     const envelope = smooth(t / .22) * smooth((duration - t) / .38);
@@ -133,6 +141,30 @@ const RigMotion = (() => {
       state.eyes.happy = in_;
       state.mouth = in_ > .5 ? 'mouth-laugh' : 'mouth';
       state.mouthScaleY = 1 + .12 * Math.sin(t * 24) * in_;
+    } else if (action === 'tickle-head') {
+      // Hair flies about, eyes squeeze shut with laughter, arms reach up.
+      const in_ = smooth(t / .18) * smooth((duration - t) / .35);
+      state.hairR = 9 * Math.sin(t * 26) * in_;
+      state.eyes.happy = in_; state.eyes.browLift = .6 * in_;
+      both(state, REST.armLeft + (245 - REST.armLeft) * in_ + Math.sin(t * 24) * 10 * in_, 8 * in_);
+      state.mouth = in_ > .5 ? 'mouth-laugh' : 'mouth';
+      state.mouthScaleY = 1 + .1 * Math.sin(t * 26) * in_;
+    } else if (action === 'tickle-feet') {
+      const in_ = smooth(t / .15) * smooth((duration - t) / .35);
+      both(state, REST.armLeft + (190 - REST.armLeft) * in_ + Math.sin(t * 20) * 12 * in_, 6 * in_);
+      state.eyes.happy = .8 * in_; state.eyes.gazeY = .5 * in_; state.eyes.browLift = .4 * in_;
+      state.mouth = in_ > .5 ? 'mouth-laugh' : 'mouth';
+    } else if (action === 'tickle-side') {
+      // The tickled arm clamps down, the other one flails; the eyes look at the culprit.
+      const in_ = smooth(t / .18) * smooth((duration - t) / .35);
+      const left = options.side === 'left';
+      const clampAngle = 95, flailAngle = 205 + Math.sin(t * 24) * 12;
+      state.armLeft = REST.armLeft + ((left ? clampAngle : flailAngle) - REST.armLeft) * in_;
+      state.armRight = REST.armRight + ((left ? mirror(flailAngle) : mirror(clampAngle)) - REST.armRight) * in_;
+      state.armLeftLift = (left ? 0 : 6) * in_; state.armRightLift = (left ? 6 : 0) * in_;
+      state.eyes.gazeX = (left ? -.7 : .7) * in_; state.eyes.happy = .7 * in_;
+      state.mouth = in_ > .5 ? 'mouth-laugh' : 'mouth';
+      state.hairR = (left ? -1 : 1) * 4 * in_;
     } else if (action === 'dance') {
       const phase = (t - .34) * Math.PI / .56;
       const swing = Math.sin(phase) * envelope;
@@ -194,11 +226,15 @@ const RigMotion = (() => {
         state.mouthScaleY = 1 + .25 * Math.sin(clamp((t - 2.2) / .4) * Math.PI);
       }
     } else if (action === 'yuck') {
+      // Disgust: brows knit, lids drop halfway, eyes turn away, mouth pouts.
       const in_ = smooth(t / .2) * smooth((duration - t) / .3);
-      state.eyes.open = 1 - in_;
-      state.mouthScaleX = 1 - .3 * in_; state.mouthScaleY = 1 - .35 * in_;
-      state.armLeft = REST.armLeft + (150 - REST.armLeft) * in_ + Math.sin(t * 22) * 8 * in_;
-      state.armRight = REST.armRight + (30 - REST.armRight) * in_ + Math.sin(t * 22) * 8 * in_;
+      state.eyes.open = 1 - .5 * in_;
+      state.eyes.frown = in_;
+      state.eyes.gazeX = -.7 * in_; state.eyes.gazeY = .2 * in_;
+      state.mouth = in_ > .35 ? 'frown' : 'mouth';
+      state.mouthScaleX = 1 - .25 * in_; state.mouthScaleY = 1 - .3 * in_;
+      state.armLeft = REST.armLeft + (150 - REST.armLeft) * in_ + Math.sin(t * 22) * 6 * in_;
+      state.armRight = REST.armRight + (30 - REST.armRight) * in_ + Math.sin(t * 22) * 6 * in_;
     } else if (action === 'whirl') {
       if (t < .3) { const wind = smooth(t / .3); both(state, REST.armLeft + 25 * wind); }
       else if (t < 1.45) { both(state, 240, 10); state.mouth = 'mouth-open'; }

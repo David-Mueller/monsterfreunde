@@ -6,7 +6,8 @@ Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln,
 
 - Zwei eigene Monster mit jeweils acht gezeichneten Posen.
 - Baukasten-Rig statt Posenwechsel: Körper, Haare beziehungsweise Hörner, Augenweiß, drei Münder und beide Arme sind einzelne Teile, die per CSS-Transform bewegt werden. Pupillen und Lider werden im Code gezeichnet. Alle Bewegungen laufen über Federn, sodass jede Aktion aus der aktuellen Haltung heraus beginnt und weich in die Ruhehaltung zurückkehrt. Kein Morphen, kein Schnitt.
-- Blinzeln, Atmen, Begrüßung, Kitzeln, Hüpfen und Tanzen.
+- Blinzeln, Atmen, Begrüßung, Hüpfen und Tanzen. Kitzeln in fünf Zonen: Kopf, Bauch, Füße und beide Seiten reagieren verschieden.
+- Augen, Pupillen, Lider und Brauen im Code, mit Ausdrücken von lachend bis angewidert.
 - Ein besonderer Move pro Monster: Momos Wirbel und Pips Salto.
 - Leben im Leerlauf: Wer eine Weile nichts antippt, sieht das Monster umherschauen, hüpfen oder winken. Landungen vibrieren kurz auf Geräten, die das können.
 - Füttern mit Keks, Apfel und Saft: Der Snack fliegt zum Mund, das Monster jubelt, kaut und schluckt. Jedes Monster hat einen Lieblingssnack und einen, den es verweigert.

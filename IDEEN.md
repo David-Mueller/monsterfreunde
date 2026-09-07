@@ -6,7 +6,7 @@ Stand: 7. September 2026. Diese Datei sammelt Ideen; sie bedeutet nicht, dass al
 
 - [x] Momo und Pip auswählen.
 - [x] Bewegte Monster mit Blinzeln und Begrüßung.
-- [x] Kitzeln mit visueller Reaktion und Sprechblase.
+- [x] Kitzeln mit visueller Reaktion und Sprechblase, in fünf Zonen: Kopf, Bauch, Füße, linke und rechte Seite reagieren unterschiedlich.
 - [x] Hüpfen und Tanzen.
 - [x] Baukasten-Rig mit federnden Bewegungen: Arme, Augen, Mund, Haare und Hörner bewegen sich einzeln, ohne Morphen und ohne Schnitte.
 - [x] Touch-Bedienung und Hochformat für das Telefon.
@@ -18,7 +18,7 @@ Stand: 7. September 2026. Diese Datei sammelt Ideen; sie bedeutet nicht, dass al
 - [x] Keks, Apfel und Saft unter den Aktionen.
 - [x] Per Antippen füttern; der Snack fliegt zum Mund. Ziehen mit dem Finger kann später dazukommen.
 - [x] Jubeln, Kauen mit Knuspern, Schlucken und zufriedenes Reagieren, alles mit den vorhandenen Posen und Körperbewegung.
-- [x] Momo liebt Kekse und mag keinen Apfel, Pip liebt Äpfel und mag keine Kekse. Bei „Bäh!“ fällt der Snack zu Boden.
+- [x] Momo liebt Kekse und mag keinen Apfel, Pip liebt Äpfel und mag keine Kekse. Bei „Bäh!“ zieht das Monster die Brauen zusammen, schaut weg, schmollt, und der Snack fällt zu Boden.
 - [x] Eine neue Aktion räumt einen fliegenden Snack sofort weg; nichts bleibt hängen.
 
 Die erste Version bleibt ein unkompliziertes Spiel ohne Hungeranzeige oder Pflegepflichten. Offen: Snack per Finger zum Mund ziehen, Trinken mit eigener Animation.

@@ -23,7 +23,7 @@ Jedes Monster wird einmal in Neutralstellung gezeichnet, aber in einzelnen Teile
 | Bauchfleck / Brusttuft | Körpermitte | – | Nur zur Sicherheit separat, falls es mitwackeln soll |
 | Hörner | Kopfoberkante | – | Nur Pip |
 | Haare vorn | Kopfmitte | – | Vor dem Gesicht, für Momos Haarwirbel |
-| Augenweiß links / rechts | Augenmitte | – | Pupillen und Lider werden im Code gezeichnet |
+| Augen | – | – | Entfallen: Augenweiß, Pupillen, Lider und Brauen werden im Code gezeichnet |
 | Mund | Mundmitte | zu, lächelnd, offen, lachend, O | Für Sprechen, Kauen und Lachen |
 | Arm links / rechts | Schulter | offen, Faust | Ein Stück inklusive Hand, hinter dem Körper |
 | Bein links / rechts | Hüfte | – | Ein Stück inklusive Fuß, hinter dem Körper |
@@ -79,6 +79,6 @@ Eine versteckte Seite `rig.html` zeigt das zusammengesetzte Monster. Teile lasse
 
 ## Entscheidungen, die offen sind
 
-- Sollen Augen und Mund komplett im Code gezeichnet werden, oder nur Pupillen und Lider? Vollständig im Code gibt maximale Kontrolle und Konsistenz, sieht aber weniger nach Illustration aus.
+- Die Augen sind inzwischen komplett im Code: weißes Oval, Pupille, Lider, Brauen. Offen bleibt, ob der Mund ebenfalls im Code gezeichnet werden soll, etwa für Sprechen.
 - Arme mit einem oder zwei Segmenten? Zwei Segmente erlauben schöneres Winken und Essen, kosten aber eine zweite Zelle und einen zweiten Drehpunkt pro Arm.
 - Bleiben die acht Posen als Referenz für den Stil und für die Portraits in der Auswahl? Vorschlag: ja.

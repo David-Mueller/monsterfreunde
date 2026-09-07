@@ -6,7 +6,8 @@ const monsters = {
   momo: {
     name: 'Momo', personality: 'Der Wuschel', description: 'Momo, ein freundliches blaues Wuschelmonster',
     sheet: 'assets/momo.png', theme: '#73066d', tempo: 1, blink: [3400, 1500], voice: 250,
-    lines: { tickle: ['Hihihi!', 'Nicht am Bauch!', 'Du bist kitzelig … ich auch!'], jump: ['Boing!', 'Bis zu den Wolken!'], dance: ['Wackel, wackel!', 'So geht mein Monstertanz!'] },
+    lines: { tickle: ['Hihihi!', 'Nicht am Bauch!', 'Du bist kitzelig … ich auch!'], jump: ['Boing!', 'Bis zu den Wolken!'], dance: ['Wackel, wackel!', 'So geht mein Monstertanz!'],
+      'tickle-head': ['Nicht die Haare!', 'Hihi, das kribbelt im Kopf!'], 'tickle-feet': ['Meine Füße!', 'Hihihi, nicht da unten!'], 'tickle-side': ['Hihi, nicht die Seite!', 'Hör auf … nein, weiter!'] },
     // How each snack goes down: love, fine or yuck, with what the monster says.
     taste: { cookie: ['love', 'Mmmh, ein Keks!', 'Krümel überall!'], apple: ['yuck', 'Bäh, zu gesund!'], juice: ['fine', 'Schlürf!', 'Prickelt!'] },
     trick: { clip: 'whirl', name: 'Wirbel', label: 'Momos Wirbel', lines: ['Wiiirbel!', 'Mir wird schwindelig!'] }
@@ -14,14 +15,15 @@ const monsters = {
   pip: {
     name: 'Pip', personality: 'Der Wirbelwind', description: 'Pip, ein fröhliches orangefarbenes Monster mit kleinen Hörnern',
     sheet: 'assets/pip.png', theme: '#473178', tempo: 1.15, blink: [2500, 1500], voice: 390,
-    lines: { tickle: ['Hahaha! Nochmal!', 'Hihi, erwischt!', 'Das kitzelt!'], jump: ['Huuui!', 'Einmal bis zum Mond!'], dance: ['Wackel mit!', 'Tanzparty!'] },
+    lines: { tickle: ['Hahaha! Nochmal!', 'Hihi, erwischt!', 'Das kitzelt!'], jump: ['Huuui!', 'Einmal bis zum Mond!'], dance: ['Wackel mit!', 'Tanzparty!'],
+      'tickle-head': ['Meine Hörner!', 'Hahaha, nicht am Kopf!'], 'tickle-feet': ['Nicht die Füße!', 'Hihi, ich muss hüpfen!'], 'tickle-side': ['Hahaha, die Seite!', 'Nicht da!'] },
     taste: { cookie: ['yuck', 'Bäh, zu süß!'], apple: ['love', 'Knack! Lecker!', 'Mein Lieblingsapfel!'], juice: ['fine', 'Gluck, gluck!', 'Erfrischend!'] },
     trick: { clip: 'flip', name: 'Salto', label: 'Pips Salto', lines: ['Saaalto!', 'Tadaa!'] }
   }
 };
 const snackGlyphs = { cookie: '🍪', apple: '🍎', juice: '🧃' };
 const keys = Object.keys(monsters);
-const plays = ['tickle', 'jump', 'dance'];
+const plays = ['tickle', 'jump', 'dance', 'tickle-head', 'tickle-feet', 'tickle-side'];
 // Stamped by the deploy workflow; a local checkout keeps the placeholder.
 const stamp = document.documentElement.dataset.version || '';
 const version = stamp.startsWith('__') ? 'lokal' : stamp;
@@ -56,8 +58,8 @@ let nextIdle = 0;
 const IDLE = ['peek', 'hop', 'wave', 'peek'];
 const springs = Object.fromEntries(Object.entries({x:0,y:0,r:0,sx:1,sy:1,height:0}).map(([key,value]) => [key,new MonsterMotion.Spring(value)]));
 // Rig channels blend on the transform level, so a new action never jumps.
-const channels = Object.fromEntries(Object.entries({ armLeft: RigMotion.REST.armLeft, armRight: RigMotion.REST.armRight, armLeftLift: 0, armRightLift: 0, happy: 0, gazeX: 0, gazeY: 0, mouthScaleX: 1, mouthScaleY: 1, hairR: 0, hairSy: 1 }).map(([key, value]) => [key, new MonsterMotion.Spring(value)]));
-const CHANNEL_SPEED = { armLeft: 30, armRight: 30, armLeftLift: 30, armRightLift: 30, happy: 26, gazeX: 16, gazeY: 16, mouthScaleX: 40, mouthScaleY: 40, hairR: 9, hairSy: 14 };
+const channels = Object.fromEntries(Object.entries({ armLeft: RigMotion.REST.armLeft, armRight: RigMotion.REST.armRight, armLeftLift: 0, armRightLift: 0, happy: 0, gazeX: 0, gazeY: 0, frown: 0, browLift: 0, mouthScaleX: 1, mouthScaleY: 1, hairR: 0, hairSy: 1 }).map(([key, value]) => [key, new MonsterMotion.Spring(value)]));
+const CHANNEL_SPEED = { armLeft: 30, armRight: 30, armLeftLift: 30, armRightLift: 30, happy: 26, gazeX: 16, gazeY: 16, frown: 20, browLift: 20, mouthScaleX: 40, mouthScaleY: 40, hairR: 9, hairSy: 14 };
 
 const monster = () => monsters[selected];
 
@@ -92,12 +94,12 @@ function noteInteraction(now = performance.now()) {
   nextIdle = now + 7000 + Math.random() * 6000;
 }
 
-function startClip(name) {
+function startClip(name, options = {}) {
   if (!ready) return;
   clearAction();
   const clip = MonsterMotion.clips[name];
   // Every clip starts from the current pose and ends in the neutral one.
-  currentClip = { name, clip, start: performance.now(), speed: monster().tempo, duration: clip.duration, fired: 0 };
+  currentClip = { name, clip, options, start: performance.now(), speed: monster().tempo, duration: clip.duration, fired: 0 };
   scheduleFrame();
 }
 
@@ -165,10 +167,10 @@ function animate(now) {
       speech.classList.remove('visible');
       scheduleBlink(now);
     } else if (reduced.matches) {
-      pose = RigMotion.pose(running.name, Math.min(elapsed, running.duration * .5), running.duration, now / 1000);
+      pose = RigMotion.pose(running.name, Math.min(elapsed, running.duration * .5), running.duration, now / 1000, running.options);
     } else {
-      target = MonsterMotion.body(running.name, elapsed, running.duration, now / 1000, monster().tempo);
-      pose = RigMotion.pose(running.name, elapsed, running.duration, now / 1000);
+      target = MonsterMotion.body(running.name, elapsed, running.duration, now / 1000, monster().tempo, running.options);
+      pose = RigMotion.pose(running.name, elapsed, running.duration, now / 1000, running.options);
       while (running.fired < running.clip.moments.length && elapsed >= running.clip.moments[running.fired].at) moment(running.clip.moments[running.fired++].kind);
     }
   }
@@ -184,12 +186,12 @@ function animate(now) {
   ground.style.opacity = String(1 - altitude * .65);
   // Face and arms follow their targets with springs; hair swings behind the
   // body with a lag, and stretches a little when the body squashes.
-  const wanted = { armLeft: pose.armLeft, armRight: pose.armRight, armLeftLift: pose.armLeftLift || 0, armRightLift: pose.armRightLift || 0, happy: pose.eyes.happy, gazeX: pose.eyes.gazeX, gazeY: pose.eyes.gazeY, mouthScaleX: pose.mouthScaleX ?? 1, mouthScaleY: pose.mouthScaleY ?? 1, hairR: -motion.r * 1.3 - motion.x * .4, hairSy: 1 - (motion.sy - 1) * .9 };
+  const wanted = { armLeft: pose.armLeft, armRight: pose.armRight, armLeftLift: pose.armLeftLift || 0, armRightLift: pose.armRightLift || 0, happy: pose.eyes.happy, gazeX: pose.eyes.gazeX, gazeY: pose.eyes.gazeY, frown: pose.eyes.frown || 0, browLift: pose.eyes.browLift || 0, mouthScaleX: pose.mouthScaleX ?? 1, mouthScaleY: pose.mouthScaleY ?? 1, hairR: -motion.r * 1.3 - motion.x * .4 + (pose.hairR || 0), hairSy: 1 - (motion.sy - 1) * .9 };
   const smoothed = {};
   for (const key of Object.keys(channels)) smoothed[key] = reduced.matches ? wanted[key] : channels[key].step(wanted[key], dt, CHANNEL_SPEED[key]);
   rig.set({
     armLeft: smoothed.armLeft, armRight: smoothed.armRight, armLeftLift: smoothed.armLeftLift, armRightLift: smoothed.armRightLift,
-    eyes: { open: pose.eyes.open, happy: smoothed.happy, gazeX: smoothed.gazeX, gazeY: smoothed.gazeY },
+    eyes: { open: pose.eyes.open, happy: smoothed.happy, gazeX: smoothed.gazeX, gazeY: smoothed.gazeY, frown: smoothed.frown, browLift: smoothed.browLift },
     mouth: pose.mouth, mouthScaleX: smoothed.mouthScaleX, mouthScaleY: smoothed.mouthScaleY,
     hair: { r: smoothed.hairR, sx: 1, sy: smoothed.hairSy }
   });
@@ -224,15 +226,25 @@ function burst(action, count = 9) {
   }
 }
 
-function perform(action) {
+function perform(action, options = {}) {
   if (!ready || !plays.includes(action)) return;
   noteInteraction();
-  startClip(action);
+  startClip(action, options);
   const lines = monster().lines[action];
   const duration = reduced.matches ? 900 : currentClip.duration / currentClip.speed * 1000;
   say(lines[Math.floor(Math.random() * lines.length)], duration + 200);
-  actions.find(button => button.dataset.action === action).classList.add('active');
+  actions.find(button => button.dataset.action === action)?.classList.add('active');
   burst(action);
+}
+
+// Where on the monster a tap landed decides how it is tickled.
+function tickleAt(clientX, clientY) {
+  const box = touch.getBoundingClientRect();
+  const x = (clientX - box.left) / box.width, y = (clientY - box.top) / box.height;
+  if (y < .4) perform('tickle-head');
+  else if (y > .8) perform('tickle-feet');
+  else if (Math.abs(x - .5) > .3) perform('tickle-side', { side: x < .5 ? 'left' : 'right' });
+  else perform('tickle');
 }
 
 function selectMonster(key, greet = true) {
@@ -309,6 +321,11 @@ touch.addEventListener('pointerup', event => {
   if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) {
     ignoreClickUntil = performance.now() + 500;
     changeMonster(dx < 0 ? 1 : -1);
+  } else if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
+    // A tap: tickle the spot that was touched. Keyboard activation still
+    // arrives as a click and tickles the belly.
+    ignoreClickUntil = performance.now() + 500;
+    tickleAt(event.clientX, event.clientY);
   }
 });
 touch.addEventListener('pointercancel', () => { pointerStart = null; });
@@ -347,7 +364,7 @@ fetch(`assets/rig.json?v=${encodeURIComponent(version)}`).then(response => {
   return response.json();
 }).then(data => {
   rigData = data;
-  const files = keys.flatMap(key => Object.keys(data[key].parts).map(part => `assets/parts/${key}-${part}.png`));
+  const files = keys.flatMap(key => Object.keys(data[key].parts).filter(part => !part.startsWith('eye')).map(part => `assets/parts/${key}-${part}.png`));
   return Promise.all(files.map(src => new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve();

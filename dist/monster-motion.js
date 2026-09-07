@@ -16,6 +16,10 @@ const MonsterMotion = (() => {
     blink:{keys:[[0,0],[.075,1],[.12,1],[.27,0]],still:0,moments:[]},
     wave:{keys:[[0,0],[.30,4],[1.02,4],[1.38,0]],still:4,moments:[{at:.30,kind:'wave'}]},
     tickle:{keys:[[0,0],[.24,7],[1.36,7],[1.80,0]],still:7,moments:[{at:.10,kind:'giggle'},{at:.62,kind:'giggle'},{at:1.05,kind:'giggle'}]},
+    // Tickle zones: the head shakes its hair, the feet make it hop, a side makes it flinch away.
+    'tickle-head':{keys:[[0,0],[.2,7],[1.3,7],[1.6,0]],still:7,moments:[{at:.08,kind:'giggle'},{at:.55,kind:'giggle'},{at:1.0,kind:'giggle'}]},
+    'tickle-feet':{keys:[[0,0],[.15,6],[1.3,6],[1.6,0]],still:6,moments:[{at:.1,kind:'giggle'},{at:.32,kind:'land'},{at:.68,kind:'land'},{at:.75,kind:'giggle'},{at:1.04,kind:'land'}]},
+    'tickle-side':{keys:[[0,0],[.2,3],[1.2,3],[1.5,0]],still:3,moments:[{at:.08,kind:'giggle'},{at:.6,kind:'giggle'}]},
     jump:{keys:[[0,0],[.24,5],[.43,6],[.70,6],[.91,0],[1.17,5],[1.34,6],[1.52,6],[1.74,0],[2.05,0]],still:5,
       moments:hops.flatMap(hop => [{at:hop.takeoff,kind:'takeoff'},{at:hop.landing,kind:'land'}])},
     dance:{keys:[[0,0],[.34,2],[.90,3],[1.46,2],[2.02,3],[2.58,2],[3.14,3],[3.70,2],[4.18,0]],still:3,
@@ -39,7 +43,7 @@ const MonsterMotion = (() => {
   for (const clip of Object.values(clips)) clip.duration=clip.keys[clip.keys.length-1][0];
   // Whole-body transform for the current instant: idle breathing plus the
   // action's sway, giggle, or ballistic hop. `tempo` scales the breathing.
-  function body(action,t,duration,clock,tempo=1) {
+  function body(action,t,duration,clock,tempo=1,options={}) {
     const breath=Math.sin(clock*2.1*tempo);
     const result={x:0,y:-.35*(breath+1),r:.3*Math.sin(clock*.9),sx:1+.006*breath,sy:1-.008*breath,height:0,spin:0};
     if (!action || action==='blink') return result;
@@ -58,6 +62,24 @@ const MonsterMotion = (() => {
       result.y-=2.2*(.5+.5*Math.sin(t*24))*envelope;
       result.sx+=.025*Math.sin(t*24+.8)*envelope;
       result.sy-=.027*Math.sin(t*24+.8)*envelope;
+    } else if (action==='tickle-head') {
+      const shake=Math.sin(t*26)*envelope;
+      result.r=3.5*shake; result.x=2*shake;
+      result.sy-=.03*envelope; result.sx+=.02*envelope;
+    } else if (action==='tickle-feet') {
+      // Three quick hops, feet pulled up each time.
+      for (const start of [.1,.46,.82]) {
+        const p=(t-start)/.3;
+        if (p>=0 && p<1) result.height=4*24*p*(1-p);
+      }
+      result.r=2.5*Math.sin(t*20)*envelope;
+    } else if (action==='tickle-side') {
+      // Flinch away from the tickled side (options.side), then wriggle.
+      const away=(options.side==='left'?1:-1);
+      const flinch=smooth(t/.18)*smooth((duration-t)/.35);
+      result.x=12*away*flinch+2*Math.sin(t*24)*envelope;
+      result.r=-6*away*flinch+2*Math.sin(t*22)*envelope;
+      result.sx+=.02*envelope; result.sy-=.025*envelope;
     } else if (action==='wave') {
       result.r=1.7*Math.sin(t*8)*envelope;
       result.y-=1.5*Math.sin(t*7)*envelope;
