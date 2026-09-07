@@ -5,6 +5,9 @@ const monsters = {
   pip: { name: 'Pip', personality: 'Der Wirbelwind', description: 'Pip, ein fröhliches orangefarbenes Monster mit kleinen Hörnern', sheet: 'assets/pip.png', tickle: ['Hahaha! Nochmal!', 'Hihi, erwischt!', 'Das kitzelt!'], jump: ['Huuui!', 'Einmal bis zum Mond!'], dance: ['Wackel mit!', 'Tanzparty!'] }
 };
 const keys = Object.keys(monsters);
+// Stamped by the deploy workflow; a local checkout keeps the placeholder.
+const stamp = document.documentElement.dataset.version || '';
+const version = stamp.startsWith('__') ? 'lokal' : stamp;
 const $ = (selector) => document.querySelector(selector);
 const choices = [...document.querySelectorAll('[data-choice]')];
 const actions = [...document.querySelectorAll('[data-action]')];
@@ -212,6 +215,7 @@ document.addEventListener('visibilitychange', () => {
 });
 reduced.addEventListener('change', () => { clearAction(); speech.classList.remove('visible'); idle(); });
 $('#reload').addEventListener('click', () => window.location.reload());
+$('#version').textContent = version;
 
 Promise.all([
   ...keys.map(key=>new Promise((resolve,reject)=>{
@@ -220,7 +224,7 @@ Promise.all([
     image.onerror=reject;
     image.src=monsters[key].sheet;
   })),
-  fetch('assets/motion.json?v=3').then(response=>{if(!response.ok)throw new Error('Missing motion data');return response.json();})
+  fetch(`assets/motion.json?v=${encodeURIComponent(version)}`).then(response=>{if(!response.ok)throw new Error('Missing motion data');return response.json();})
 ]).then(results=>{
   renderer=new MonsterRenderer(sprite,results[results.length-1]);
   renderer.onRestore=()=>{clearAction();idle();};

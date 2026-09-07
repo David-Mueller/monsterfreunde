@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-version="__VERSION__">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -7,9 +7,9 @@
   <meta name="description" content="Lerne Momo und Pip kennen. Wähle dein Monster und bring es zum Hüpfen, Kichern und Tanzen.">
   <title>Monsterfreunde — Momo & Pip</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css?v=3">
-  <script src="monster-motion.js?v=3" defer></script>
-  <script src="app.js?v=3" defer></script>
+  <link rel="stylesheet" href="styles.css?v=__VERSION__">
+  <script src="monster-motion.js?v=__VERSION__" defer></script>
+  <script src="app.js?v=__VERSION__" defer></script>
 </head>
 <body data-monster="momo">
   <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -71,6 +71,7 @@
       </div>
       <p class="selection-hint">Zwei kleine Monster. Jede Menge Quatsch.</p>
     </footer>
+    <p class="version" aria-label="Version der App">Version <span id="version">lokal</span></p>
     <p class="load-error" role="alert" hidden>Die Monster konnten gerade nicht laden. <button type="button" id="reload">Nochmal versuchen</button></p>
   </main>
 </body>

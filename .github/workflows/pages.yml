@@ -30,6 +30,12 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v6
 
+      - name: Stamp version into the page
+        run: |
+          stamp="${GITHUB_SHA::7} · $(date -u +%d.%m.%Y)"
+          sed -i "s|__VERSION__|${stamp}|g" dist/index.html
+          grep -q "data-version=\"${stamp}\"" dist/index.html
+
       - name: Check static application
         run: |
           node --check dist/app.js
