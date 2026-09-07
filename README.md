@@ -33,6 +33,7 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `scripts/prepare-motion.py` | Leitet Griffpunkte und Zentrierung aus den vorhandenen Zeichnungen ab |
 | `asset-prompts.json` | Entstehungsbeschreibungen der Grafiken |
 | `IDEEN.md` | Ideen und vorgeschlagene nächste Ausbauschritte |
+| `ANIMATION.md` | Konzept für ein Baukasten-Rig als nächste Animationsgrundlage |
 | `.github/workflows/pages.yml` | Veröffentlichung von `dist/` über GitHub Pages |
 
 Die vorbereiteten Animationsdaten sind eingecheckt. Nur wenn sie neu erzeugt werden sollen:

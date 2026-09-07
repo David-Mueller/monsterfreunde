@@ -53,6 +53,11 @@ Das visuelle Kitzeln ist bereits vorhanden. In diesem Schritt bekommt es zusätz
 - [ ] Erst später prüfen, ob dynamische Spracherzeugung nötig ist; dafür eine serverseitige Anbindung mit geschütztem API-Schlüssel vorsehen.
 - [ ] Wiederholte Clips wiederverwenden und beim Wechsel des Monsters die laufende Wiedergabe kontrolliert beenden.
 
+### Grundlage für alles Weitere: Baukasten-Rig
+
+- [ ] Monster in einzelne Teile zerlegen und per Rig animieren statt ganze Zeichnungen zu morphen. Konzept, Teileliste und Reihenfolge stehen in [ANIMATION.md](ANIMATION.md).
+- [ ] Zuerst mit Teilen aus den vorhandenen Zeichnungen, danach mit eigens erzeugten Teile-Sheets.
+
 ### 5. Monster-Designer
 
 - [ ] Ein eigenes Monster aus Körperform, Augen, Mund, Armen, Beinen, Haaren, Hörnern und Farben zusammenbauen.
