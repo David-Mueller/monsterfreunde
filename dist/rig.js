@@ -23,7 +23,8 @@ class MonsterRig {
     root.classList.add('rendered');
     const parts = this.data.parts;
     for (const [name, part] of Object.entries(parts)) {
-      const element = document.createElement(name.startsWith('eye') ? 'div' : 'img');
+      // Eyes and jointed legs are containers; every other part is an image.
+      const element = document.createElement(name.startsWith('eye') || part.lower ? 'div' : 'img');
       element.className = `part part-${name}`;
       element.dataset.part = name;
       // Arms are placed so that their pivot sits on the shoulder.
@@ -34,6 +35,10 @@ class MonsterRig {
         element.src = `assets/parts/${key}-${name}.png`;
         element.alt = '';
         element.draggable = false;
+      } else if (part.lower) {
+        const upper = document.createElement('img');
+        upper.src = `assets/parts/${key}-${name}.png`; upper.alt = ''; upper.draggable = false;
+        element.append(upper);
       } else {
         // Eye white, pupil, lids and brow are plain shapes: clean edges, no
         // leftovers from the drawing, and every expression is a number.
