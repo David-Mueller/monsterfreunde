@@ -27,13 +27,42 @@ python3 -m http.server 8000 --directory dist
 
 Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App ihre Animationsdaten nachlädt; `index.html` nicht direkt als lokale Datei öffnen.
 
+## Sprachsteuerung (Agentic Speech)
+
+Optionales Zusatzfeature: Das Kind hält den großen Mikrofon-Knopf gedrückt und spricht mit dem gewählten Monster (Momo, Pip, Lumi oder Zing). Das Monster antwortet mit Stimme und führt Aktionen aus — hüpfen, tanzen, kitzeln, füttern, sein Kunststück, ein Gefühl zeigen, winken. Die App bleibt ohne dieses Feature vollständig nutzbar; `speech.js` lädt defensiv und blendet den Knopf aus, wenn Browser-Support, Mikrofon oder Server fehlen (dann zeigt der Knopf ein Schlaf-Emoji).
+
+### Architektur
+
+- **Kein API-Key im Browser.** `scripts/speech-proxy.mjs` ist ein winziger Node-Server (nur Builtins, Node ≥ 22), der den echten OpenAI-API-Key nur im Serverprozess hält. Der Browser bekommt über `POST /api/session` ausschließlich einen kurzlebigen Ephemeral Token.
+- **Persona server-seitig gepinnt.** Modell (`gpt-realtime-2.1-mini`), kindgerechte deutsche Monster-Persona, passende Stimme und die Werkzeug-Whitelist werden beim Erzeugen des Tokens fest in die Session geschrieben. Der Client kann daran nichts ändern.
+- **Direkte WebRTC-Verbindung.** Mit dem Ephemeral Token verbindet sich der Browser per WebRTC direkt zur OpenAI Realtime API. Push-to-Talk: das Mikrofon ist nur aktiv, solange der Knopf gedrückt ist (keine Daueraufnahme).
+- **Werkzeuge statt Freitext.** Das Modell darf ausschließlich die definierten Funktionen aufrufen (`huepfen`, `tanzen`, `besonderer_move`, `kitzeln`, `fuettern`, `ausdruck`, `begruessen`). `speech.js` mappt sie auf die App-Aktionen über `window.MonsterApp`. Kein `eval`, keine dynamische Ausführung von Modell-Text.
+- **Tageslimit.** Pro Tag stehen 30 Minuten zur Verfügung (Zähler in `~/.claude/state/monster-speech-usage.json`, je Session 5 Minuten reserviert). Bei Überschreitung liefert der Proxy `429`, der Client zeigt „Die Monster schlafen schon".
+
+### Proxy starten
+
+```sh
+bash scripts/start-speech-proxy.sh
+```
+
+Der Proxy lädt den Key selbst via `claude-control-op` aus 1Password (Vault Clawdbot) und bindet nur an `127.0.0.1:8092`. Für den öffentlichen Zugang wird `/api/*` per tailscale-Proxy auf diesen Port geleitet; nur die Origin `https://davids-macbook-pro.macaroni-wezen.ts.net:8443` ist per CORS erlaubt.
+
+### Grenzen
+
+- Nur Push-to-Talk, keine Hintergrundaufnahme.
+- Wechselt das Kind mitten in einer Sitzung das Monster, baut der Client die Verbindung mit passender Persona/Stimme neu auf.
+- Der Proxy ist lokal und wird nicht mit `dist/` deployt; er läuft auf David's Mac (z. B. in einer tmux-Session).
+
 ## Dateien
 
 | Pfad | Inhalt |
 | --- | --- |
 | `dist/index.html` | Oberfläche und Bedienelemente |
 | `dist/styles.css` | Gestaltung und responsive Größen |
-| `dist/app.js` | Auswahl, Aktionen und Animationssteuerung |
+| `dist/app.js` | Auswahl, Aktionen und Animationssteuerung; stellt `window.MonsterApp` bereit |
+| `dist/speech.js` | Optionale Sprachsteuerung (Push-to-Talk, WebRTC zur OpenAI Realtime API) |
+| `scripts/speech-proxy.mjs` | Mint-Server: erzeugt Ephemeral Tokens, pinnt Persona/Werkzeuge, Tageslimit |
+| `scripts/start-speech-proxy.sh` | Startet den Sprach-Proxy (Key via 1Password), für tmux |
 | `dist/sounds.js` | Synthetische Sounds und Ton-Schalter |
 | `dist/sw.js`, `dist/manifest.webmanifest` | Offline-Kopie und App-Installation |
 | `dist/monster-motion.js` | Clips, Körperbewegung und Feder |

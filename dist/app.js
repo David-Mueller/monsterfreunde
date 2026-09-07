@@ -384,6 +384,42 @@ $('#version-button').addEventListener('click', async () => {
   $('#version').textContent = 'kopiert';
   setTimeout(() => { button.classList.remove('copied'); $('#version').textContent = version; }, 1200);
 });
+// A tiny, action-oriented public API so optional add-ons (the voice control in
+// speech.js) can drive the monster without touching any animation internals.
+// Every method is a no-op until the rig is ready, so callers stay safe.
+window.MonsterApp = {
+  get ready() { return ready; },
+  get monster() { return selected; },
+  monsters: keys,
+  select(key) { if (monsters[key]) selectMonster(key); return selected; },
+  jump() { perform('jump'); },
+  dance() { perform('dance'); },
+  trick() { trick(); },
+  greet() {
+    if (!ready) return;
+    noteInteraction();
+    startClip('wave');
+    Sounds.play('hello', monster().voice);
+    say(`Hallo! Ich bin ${monster().name}.`, 1400);
+  },
+  tickle(zone) {
+    const map = { kopf: 'tickle-head', bauch: 'tickle', fuesse: 'tickle-feet', 'füße': 'tickle-feet', seite: 'tickle-side' };
+    perform(map[zone] || 'tickle');
+  },
+  feed(snack) {
+    const map = { keks: 'cookie', apfel: 'apple', saft: 'juice' };
+    feed(map[snack] || snack);
+  },
+  express(emotion) {
+    // The app has no generic "emotion" clip, so map to the nearest playful move.
+    const map = { freude: 'dance', aufgeregt: 'jump', albern: 'tickle', muede: 'settle', 'müde': 'settle' };
+    const action = map[emotion] || 'dance';
+    if (action === 'settle') { if (ready) { noteInteraction(); startClip('settle'); } }
+    else perform(action);
+  },
+  say(text) { if (ready && typeof text === 'string' && text) say(text, 2400); }
+};
+
 Sounds.bindToggle($('#sound'));
 // Offline copy of the app; the registration URL carries the version so a new
 // deployment always installs a fresh worker.
