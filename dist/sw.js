@@ -7,7 +7,7 @@
 const VERSION = '__VERSION__';
 // The local suffix makes structural asset changes visible in previews even
 // before the deployment workflow replaces VERSION with a commit stamp.
-const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal-four-monsters-v11-switch-restart' : VERSION}`;
+const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal-four-monsters-v12-ring-state' : VERSION}`;
 const FILES = [
   './', 'index.html', 'styles.css', 'app.js', 'speech.js', 'monster-motion.js', 'rig.js', 'sounds.js', 'manifest.webmanifest',
   'assets/momo.png', 'assets/pip.png', 'assets/lumi.png', 'assets/zing.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png'

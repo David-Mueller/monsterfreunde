@@ -84,7 +84,7 @@
     button.classList.toggle('on', active && childSpeaking);
     button.classList.toggle('speaking', active && monsterSpeaking);
     if (active) { setGlyph('⏹️'); button.setAttribute('aria-label', 'Gespräch beenden'); button.classList.remove('asleep'); }
-    else if (connecting) { setGlyph('🎤'); button.setAttribute('aria-label', 'Verbinde…'); }
+    else if (connecting) { setGlyph('📞'); button.setAttribute('aria-label', 'Klingelt beim Monster…'); }
   }
 
   function setGlyph(g) { if (glyph) glyph.textContent = g; }
@@ -247,6 +247,15 @@
     });
     if (!sdpRes.ok) throw new Error('webrtc_failed');
     await pc.setRemoteDescription({ type: 'answer', sdp: await sdpRes.text() });
+
+    // Erst "abgenommen", wenn der Datenkanal offen ist — vorher gehen die
+    // ersten Worte der Kinder ins Leere. Danach begrüßt das Monster hörbar.
+    await new Promise((resolve, reject) => {
+      const t = window.setTimeout(() => reject(new Error('dc_timeout')), 10000);
+      dc.addEventListener('open', () => { window.clearTimeout(t); resolve(); }, { once: true });
+      dc.addEventListener('error', () => { window.clearTimeout(t); reject(new Error('dc_error')); }, { once: true });
+    });
+    sendEvent({ type: 'response.create', response: { instructions: 'Begrüße das Kind mit EINEM kurzen fröhlichen Satz und frag, was ihr zusammen machen wollt.' } });
 
     // Heartbeats melden die echte Sprechzeit (zählt das Tagesbudget genau ab).
     if (sessionId) startHeartbeat(data.heartbeat_seconds || 30);
