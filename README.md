@@ -5,7 +5,7 @@ Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln,
 ## Aktueller Stand
 
 - Zwei eigene Monster mit jeweils acht gezeichneten Posen.
-- Berechnete Zwischenposen mit WebGL und einer Darstellung ohne WebGL als Rückfalloption.
+- Es werden immer nur vollständige Zeichnungen angezeigt; Posen wechseln durch harte Schnitte, damit keine verwaschenen Mischbilder entstehen. WebGL ergänzt ein leichtes Haarwackeln, ohne WebGL läuft die App mit denselben Posen.
 - Blinzeln, Atmen, Begrüßung, Kitzeln, Hüpfen und Tanzen.
 - Federnde Körperbewegung und zum Sprung passender Schatten.
 - Auswahl per Touch, Wischen oder Tastatur.
@@ -28,9 +28,9 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `dist/index.html` | Oberfläche und Bedienelemente |
 | `dist/styles.css` | Gestaltung und responsive Größen |
 | `dist/app.js` | Auswahl, Aktionen und Animationssteuerung |
-| `dist/monster-motion.js` | Pose-Interpolation, WebGL und Bewegungsmodelle |
+| `dist/monster-motion.js` | Posenwechsel, WebGL-Darstellung und Bewegungsmodelle |
 | `dist/assets/` | Monsterzeichnungen und Animations-Landmarken |
-| `scripts/prepare-motion.py` | Leitet Landmarken aus den vorhandenen Zeichnungen ab |
+| `scripts/prepare-motion.py` | Leitet Landmarken und Zentrierung aus den vorhandenen Zeichnungen ab; derzeit wird nur die Zentrierung verwendet |
 | `asset-prompts.json` | Entstehungsbeschreibungen der Grafiken |
 | `IDEEN.md` | Ideen und vorgeschlagene nächste Ausbauschritte |
 | `.github/workflows/pages.yml` | Veröffentlichung von `dist/` über GitHub Pages |

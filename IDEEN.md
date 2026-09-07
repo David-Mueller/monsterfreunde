@@ -8,7 +8,7 @@ Stand: 7. September 2026. Diese Datei sammelt Ideen; sie bedeutet nicht, dass al
 - [x] Bewegte Monster mit Blinzeln und Begrüßung.
 - [x] Kitzeln mit visueller Reaktion und Sprechblase.
 - [x] Hüpfen und Tanzen.
-- [x] Berechnete Zwischenposen, federnde Bewegungen und Sprungschatten.
+- [x] Federnde Bewegungen und Sprungschatten; Posen wechseln als harte Schnitte, damit die Figur nie verwaschen wirkt.
 - [x] Touch-Bedienung und Hochformat für das Telefon.
 
 ## Vorgeschlagene nächste Schritte

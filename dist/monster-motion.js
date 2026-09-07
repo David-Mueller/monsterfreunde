@@ -1,7 +1,9 @@
 'use strict';
 
-// Existing drawings are warped towards matching face/body landmarks before
-// blending. In-between frames are rendered at the display refresh rate.
+// Only complete drawings are ever shown: poses are cut from one to the next,
+// never blended or warped, so limbs and faces can not smear. Motion between
+// poses comes from the spring-driven body transform in app.js. WebGL only adds
+// a subtle hair wobble and re-centres each pose within its atlas cell.
 class MonsterRenderer {
   constructor(root, landmarks) {
     this.root = root;
@@ -81,10 +83,8 @@ class MonsterRenderer {
       void main() {
         vec4 a = samplePose(uFrom,vFrom,uFromRect);
         vec4 b = samplePose(uTo,vTo,uToRect);
-        // Keep the drawing crisp: the mesh still moves continuously between
-        // both poses, but only one complete illustration is visible at a
-        // time. Alpha-blending the two characters produced double eyes,
-        // mouths and limbs on real devices.
+        // Exactly one complete illustration is visible at any time.
+        // Alpha-blending both poses produced faded double limbs on devices.
         float visiblePose = step(0.5, uMix);
         gl_FragColor = mix(a, b, visiblePose);
       }
@@ -121,7 +121,6 @@ class MonsterRenderer {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,this.indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);
     this.indexCount=indices.length;
-    this.snapshot=this.makeTexture();
     this.lastMeshKey=null;
     gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
   }
@@ -150,22 +149,14 @@ class MonsterRenderer {
 
   pose(frame) {
     const data=this.landmarks[this.key][frame];
-    return { frame, points:data.points, offset:data.offset, texture:this.textures.get(this.key), rect:[frame%4/4,Math.floor(frame/4)/2,.25,.5] };
+    return { frame, offset:data.offset, texture:this.textures.get(this.key), rect:[frame%4/4,Math.floor(frame/4)/2,.25,.5] };
   }
 
+  // The pose currently on screen; a new clip starts from it without any jump.
   capture() {
     if (!this.last) return this.pose(0);
-    const {a,b,mix,time,life}=this.last;
-    if (mix===0) return a;
-    if (mix===1) return b;
-    if (!this.supported) return mix<.5?a:b;
-    // Render again before copying: the browser may have discarded its backbuffer.
-    this.draw(a,b,mix,time,life);
-    const gl=this.gl;
-    gl.bindTexture(gl.TEXTURE_2D,this.snapshot);
-    gl.copyTexImage2D(gl.TEXTURE_2D,0,gl.RGBA,0,0,this.canvas.width,this.canvas.height,0);
-    return { frame:-1, offset:[0,0], texture:this.snapshot, rect:[0,1,1,-1],
-      points:a.points.map((p,i) => [p[0]+(b.points[i][0]-p[0])*mix,p[1]+(b.points[i][1]-p[1])*mix]) };
+    const {a,b,mix}=this.last;
+    return mix<.5?a:b;
   }
 
   draw(a,b,mix,time=0,life=0) {
@@ -181,29 +172,16 @@ class MonsterRenderer {
     if (this.canvas.width!==size) { this.canvas.width=size; this.canvas.height=size; }
     gl.viewport(0,0,size,size);
     gl.useProgram(this.program);
-    const meshKey=`${this.key}:${a.frame}:${b.frame}:${mix}`;
-    if (meshKey!==this.lastMeshKey || a.frame<0 || b.frame<0) {
+    const meshKey=`${this.key}:${a.frame}:${b.frame}`;
+    if (meshKey!==this.lastMeshKey) {
       this.lastMeshKey=meshKey;
-      const middle=a.points.map((p,i) => [p[0]+(b.points[i][0]-p[0])*mix,p[1]+(b.points[i][1]-p[1])*mix]);
+      // Identity mesh: every pose is drawn undistorted, only shifted so that
+      // the character stays centred regardless of its position in the cell.
       for (let i=0;i<this.grid.length;i++) {
-        const [x,y]=this.grid[i];
-        let dx=0,dy=0,total=0;
-        if (mix>0 && mix<1 && a!==b) {
-          for (let j=0;j<middle.length;j++) {
-            const q=middle[j],distance=(x-q[0])**2+(y-q[1])**2+.00025;
-            const weight=1/(distance*distance);
-            dx+=(b.points[j][0]-a.points[j][0])*weight;
-            dy+=(b.points[j][1]-a.points[j][1])*weight;
-            total+=weight;
-          }
-          dx/=total; dy/=total;
-        }
-        const base=i*6;
+        const [x,y]=this.grid[i],base=i*6;
         this.vertices[base]=x; this.vertices[base+1]=y;
-        this.vertices[base+2]=x-dx*mix-a.offset[0];
-        this.vertices[base+3]=y-dy*mix-a.offset[1];
-        this.vertices[base+4]=x+dx*(1-mix)-b.offset[0];
-        this.vertices[base+5]=y+dy*(1-mix)-b.offset[1];
+        this.vertices[base+2]=x-a.offset[0]; this.vertices[base+3]=y-a.offset[1];
+        this.vertices[base+4]=x-b.offset[0]; this.vertices[base+5]=y-b.offset[1];
       }
       gl.bindBuffer(gl.ARRAY_BUFFER,this.vertexBuffer);
       gl.bufferSubData(gl.ARRAY_BUFFER,0,this.vertices);
@@ -220,7 +198,7 @@ class MonsterRenderer {
 const MonsterMotion = (() => {
   const clamp=value=>Math.max(0,Math.min(1,value));
   const smooth=value=>{const t=clamp(value);return clamp(t*t*t*(t*(t*6-15)+10));};
-  // Pose timings are seconds; the renderer supplies all intervening positions.
+  // Pose timings are seconds; the drawing cuts to the next pose halfway through each step.
   const clips={
     settle:[[0,0],[.35,0]],
     blink:[[0,0],[.075,1],[.12,1],[.27,0]],
