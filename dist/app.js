@@ -220,7 +220,7 @@ Promise.all([
     image.onerror=reject;
     image.src=monsters[key].sheet;
   })),
-  fetch('assets/motion.json?v=2').then(response=>{if(!response.ok)throw new Error('Missing motion data');return response.json();})
+  fetch('assets/motion.json?v=3').then(response=>{if(!response.ok)throw new Error('Missing motion data');return response.json();})
 ]).then(results=>{
   renderer=new MonsterRenderer(sprite,results[results.length-1]);
   renderer.onRestore=()=>{clearAction();idle();};
