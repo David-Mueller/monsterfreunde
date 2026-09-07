@@ -33,7 +33,7 @@ jobs:
       - name: Stamp version into the page
         run: |
           stamp="${GITHUB_SHA::7} · $(TZ=Europe/Berlin date +%d.%m.%Y' '%H:%M)"
-          sed -i "s|__VERSION__|${stamp}|g" dist/index.html dist/rig.html dist/sw.js
+          sed -i "s|__VERSION__|${stamp}|g" dist/index.html dist/sw.js
           grep -q "data-version=\"${stamp}\"" dist/index.html
 
       - name: Check static application
@@ -45,13 +45,12 @@ jobs:
           node --check dist/sw.js
           test -s dist/manifest.webmanifest
           test -s dist/assets/icon-512.png
-          node --check dist/rig-app.js
           test -s dist/assets/rig.json
           test -s dist/index.html
           test -s dist/styles.css
           test -s dist/assets/momo.png
           test -s dist/assets/pip.png
-          test -s dist/assets/motion.json
+          test -s dist/assets/parts/momo-body.png
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

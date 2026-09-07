@@ -5,7 +5,7 @@ Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln,
 ## Aktueller Stand
 
 - Zwei eigene Monster mit jeweils acht gezeichneten Posen.
-- Kein Morphen: Es ist immer genau eine der gezeichneten Posen zu sehen, jede exakt zentriert. Posen wechseln als Schnitte, jede Aktion beginnt bei der gerade sichtbaren Pose und endet in der Neutralpose. Ein kleiner Federstoß bei jedem Wechsel lässt den Schnitt wie einen Schritt wirken.
+- Baukasten-Rig statt Posenwechsel: Körper, Haare beziehungsweise Hörner, Augenweiß, drei Münder und beide Arme sind einzelne Teile, die per CSS-Transform bewegt werden. Pupillen und Lider werden im Code gezeichnet. Alle Bewegungen laufen über Federn, sodass jede Aktion aus der aktuellen Haltung heraus beginnt und weich in die Ruhehaltung zurückkehrt. Kein Morphen, kein Schnitt.
 - Blinzeln, Atmen, Begrüßung, Kitzeln, Hüpfen und Tanzen.
 - Ein besonderer Move pro Monster: Momos Wirbel und Pips Salto.
 - Leben im Leerlauf: Wer eine Weile nichts antippt, sieht das Monster umherschauen, hüpfen oder winken. Landungen vibrieren kurz auf Geräten, die das können.
@@ -35,12 +35,12 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `dist/app.js` | Auswahl, Aktionen und Animationssteuerung |
 | `dist/sounds.js` | Synthetische Sounds und Ton-Schalter |
 | `dist/sw.js`, `dist/manifest.webmanifest` | Offline-Kopie und App-Installation |
-| `dist/monster-motion.js` | Posenwechsel per Canvas, Clips und Bewegungsmodelle |
-| `dist/assets/` | Monsterzeichnungen und Animations-Landmarken |
-| `dist/rig.html`, `dist/rig.js`, `dist/rig-app.js` | Prototyp des Baukasten-Rigs aus ANIMATION.md, erreichbar unter `/rig.html` |
-| `dist/assets/parts/`, `dist/assets/rig.json` | Provisorische Teile und Rig-Daten, aus den Posen geschnitten |
+| `dist/monster-motion.js` | Clips, Körperbewegung und Feder |
+| `dist/rig.js` | Rig-Laufzeit und Kanalwerte pro Aktion |
+| `dist/assets/` | Posen-Sheets für Portraits und Teile-Extraktion, Icons |
+| `dist/assets/parts/`, `dist/assets/rig.json` | Rig-Teile und Rig-Daten, vorerst aus den Posen geschnitten |
 | `scripts/extract-parts.py` | Schneidet Körper, Augen, Münder und Arme aus den vorhandenen Posen |
-| `scripts/prepare-motion.py` | Leitet Zentrierung und Landmarken aus den vorhandenen Zeichnungen ab; die Hauptseite nutzt nur die Zentrierung |
+| `scripts/prepare-motion.py` | Leitet Landmarken aus den Posen ab, die `extract-parts.py` zum Finden der Hände nutzt |
 | `asset-prompts.json` | Entstehungsbeschreibungen der Grafiken |
 | `IDEEN.md` | Ideen und vorgeschlagene nächste Ausbauschritte |
 | `ANIMATION.md` | Konzept für ein Baukasten-Rig als nächste Animationsgrundlage |
@@ -54,9 +54,9 @@ python3 scripts/prepare-motion.py
 python3 scripts/extract-parts.py
 ```
 
-## Rig-Prototyp
+## Rig
 
-Unter `/rig.html` läuft dieselbe Spielfläche mit dem Baukasten-Rig aus [ANIMATION.md](ANIMATION.md): Körper, Augen, Münder und Arme sind einzelne Teile, die per CSS-Transform bewegt werden. Pupillen und Lider werden im Code gezeichnet. Die Teile stammen vorerst aus den vorhandenen Posen und werden durch eigens erzeugte Teile-Sheets ersetzt.
+Die Monster werden aus Teilen zusammengesetzt, siehe [ANIMATION.md](ANIMATION.md). Die Teile stammen vorerst aus den vorhandenen Posen und werden durch eigens erzeugte Teile-Sheets ersetzt; die Prompts dafür stehen in `asset-prompts.json`.
 
 ## GitHub Pages
 

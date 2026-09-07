@@ -45,7 +45,8 @@ let entranceAnimation = null;
 let pointerStart = null;
 let ignoreClickUntil = 0;
 let ready = false;
-let renderer = null;
+let rig = null;
+let rigData = null;
 let currentClip = null;
 let previousTime = 0;
 let nextBlink = 0;
@@ -53,8 +54,10 @@ let snackFlight = null;
 let lastInteraction = 0;
 let nextIdle = 0;
 const IDLE = ['peek', 'hop', 'wave', 'peek'];
-const images = {};
 const springs = Object.fromEntries(Object.entries({x:0,y:0,r:0,sx:1,sy:1,height:0}).map(([key,value]) => [key,new MonsterMotion.Spring(value)]));
+// Rig channels blend on the transform level, so a new action never jumps.
+const channels = Object.fromEntries(Object.entries({ armLeft: RigMotion.REST.armLeft, armRight: RigMotion.REST.armRight, armLeftLift: 0, armRightLift: 0, happy: 0, gazeX: 0, gazeY: 0, mouthScaleX: 1, mouthScaleY: 1, hairR: 0, hairSy: 1 }).map(([key, value]) => [key, new MonsterMotion.Spring(value)]));
+const CHANNEL_SPEED = { armLeft: 30, armRight: 30, armLeftLift: 30, armRightLift: 30, happy: 26, gazeX: 16, gazeY: 16, mouthScaleX: 40, mouthScaleY: 40, hairR: 9, hairSy: 14 };
 
 const monster = () => monsters[selected];
 
@@ -93,8 +96,8 @@ function startClip(name) {
   if (!ready) return;
   clearAction();
   const clip = MonsterMotion.clips[name];
-  // A clip starts from the drawing on screen and always ends in pose 0.
-  currentClip = { name, clip, initial: renderer.frame, start: performance.now(), speed: monster().tempo, duration: clip.duration, fired: 0 };
+  // Every clip starts from the current pose and ends in the neutral one.
+  currentClip = { name, clip, start: performance.now(), speed: monster().tempo, duration: clip.duration, fired: 0 };
   scheduleFrame();
 }
 
@@ -151,8 +154,8 @@ function animate(now) {
     nextIdle = now + 9000 + Math.random() * 8000;
   }
   if (!currentClip && !reduced.matches && now >= nextBlink) startClip('blink');
-  let frame = 0;
   let target = MonsterMotion.body(null, 0, 0, now / 1000, monster().tempo);
+  let pose = RigMotion.pose(null, 0, 0, now / 1000);
   if (currentClip) {
     const running = currentClip;
     const elapsed = (now - running.start) / 1000 * running.speed;
@@ -162,18 +165,16 @@ function animate(now) {
       speech.classList.remove('visible');
       scheduleBlink(now);
     } else if (reduced.matches) {
-      frame = elapsed > .7 ? 0 : running.clip.still;
+      pose = RigMotion.pose(running.name, Math.min(elapsed, running.duration * .5), running.duration, now / 1000);
     } else {
-      frame = MonsterMotion.poseAt(running.clip, elapsed, running.initial);
       target = MonsterMotion.body(running.name, elapsed, running.duration, now / 1000, monster().tempo);
+      pose = RigMotion.pose(running.name, elapsed, running.duration, now / 1000);
       while (running.fired < running.clip.moments.length && elapsed >= running.clip.moments[running.fired].at) moment(running.clip.moments[running.fired++].kind);
     }
   }
   if (reduced.matches) target = { x: 0, y: 0, r: 0, sx: 1, sy: 1, height: 0, spin: 0 };
   // Spins turn the drawing around its centre; everything else pivots at the feet.
   sprite.style.transform = target.spin ? `rotate(${target.spin}deg)` : '';
-  // A tiny bounce on every pose change reads as a step and hides the cut.
-  if (frame !== renderer.frame && !reduced.matches && frame !== 1 && renderer.frame !== 1) { springs.sy.kick(-1.6); springs.sx.kick(1.1); }
   const motion = {};
   for (const key of Object.keys(springs)) motion[key] = springs[key].step(target[key], dt, key === 'height' ? 38 : 24);
   const scale = Math.min(1, sprite.clientWidth / 360);
@@ -181,7 +182,17 @@ function animate(now) {
   const altitude = MonsterMotion.clamp(motion.height / 110);
   ground.style.transform = `scale(${1 - altitude * .45},${1 - altitude * .25})`;
   ground.style.opacity = String(1 - altitude * .65);
-  renderer.show(frame);
+  // Face and arms follow their targets with springs; hair swings behind the
+  // body with a lag, and stretches a little when the body squashes.
+  const wanted = { armLeft: pose.armLeft, armRight: pose.armRight, armLeftLift: pose.armLeftLift || 0, armRightLift: pose.armRightLift || 0, happy: pose.eyes.happy, gazeX: pose.eyes.gazeX, gazeY: pose.eyes.gazeY, mouthScaleX: pose.mouthScaleX ?? 1, mouthScaleY: pose.mouthScaleY ?? 1, hairR: -motion.r * 1.3 - motion.x * .4, hairSy: 1 - (motion.sy - 1) * .9 };
+  const smoothed = {};
+  for (const key of Object.keys(channels)) smoothed[key] = reduced.matches ? wanted[key] : channels[key].step(wanted[key], dt, CHANNEL_SPEED[key]);
+  rig.set({
+    armLeft: smoothed.armLeft, armRight: smoothed.armRight, armLeftLift: smoothed.armLeftLift, armRightLift: smoothed.armRightLift,
+    eyes: { open: pose.eyes.open, happy: smoothed.happy, gazeX: smoothed.gazeX, gazeY: smoothed.gazeY },
+    mouth: pose.mouth, mouthScaleX: smoothed.mouthScaleX, mouthScaleY: smoothed.mouthScaleY,
+    hair: { r: smoothed.hairR, sx: 1, sy: smoothed.hairSy }
+  });
   if (!reduced.matches || currentClip) scheduleFrame();
 }
 
@@ -249,7 +260,7 @@ function selectMonster(key, greet = true) {
   arrows[0].setAttribute('aria-label', `${monsters[keys[(index + keys.length - 1) % keys.length]].name} auswählen`);
   arrows[1].setAttribute('aria-label', `${monsters[keys[(index + 1) % keys.length]].name} auswählen`);
   entranceAnimation?.cancel();
-  if (ready) renderer.setMonster(key, images[key]);
+  if (ready) rig = new MonsterRig(sprite, rigData, key);
   if (greet && ready) {
     if (!reduced.matches) entranceAnimation = $('.entrance').animate([
       { transform: 'translateY(12px) scale(.87)', opacity: .35 },
@@ -329,16 +340,21 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 
-Promise.all([
-  ...keys.map(key => new Promise((resolve, reject) => {
+// Every part of every monster is fetched before the first frame, so a
+// monster never appears piecemeal.
+fetch(`assets/rig.json?v=${encodeURIComponent(version)}`).then(response => {
+  if (!response.ok) throw new Error('Missing rig data');
+  return response.json();
+}).then(data => {
+  rigData = data;
+  const files = keys.flatMap(key => Object.keys(data[key].parts).map(part => `assets/parts/${key}-${part}.png`));
+  return Promise.all(files.map(src => new Promise((resolve, reject) => {
     const image = new Image();
-    image.onload = () => { images[key] = image; resolve(); };
+    image.onload = () => resolve();
     image.onerror = reject;
-    image.src = monsters[key].sheet;
-  })),
-  fetch(`assets/motion.json?v=${encodeURIComponent(version)}`).then(response => { if (!response.ok) throw new Error('Missing motion data'); return response.json(); })
-]).then(results => {
-  renderer = new MonsterRenderer(sprite, results[results.length - 1]);
+    image.src = src;
+  })));
+}).then(() => {
   ready = true;
   document.body.classList.add('ready');
   touch.disabled = false;

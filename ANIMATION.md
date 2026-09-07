@@ -70,11 +70,12 @@ Eine versteckte Seite `rig.html` zeigt das zusammengesetzte Monster. Teile lasse
 
 ## Vorgeschlagene Reihenfolge
 
-1. Rig-Laufzeit und Timelines mit den Teilen aus Weg B bauen, versteckt unter `rig.html`. Blinzeln, Atmen, Winken, Hüpfen, Tanzen, Kitzeln nachbauen.
-2. Rig-Editor ergänzen, Drehpunkte für Momo und Pip sauber setzen.
-3. Teile-Sheets mit dem Bildwerkzeug erzeugen und einwechseln.
-4. Hauptseite auf das Rig umstellen, Morph-Renderer entfernen.
-5. Danach die Ideen in der Reihenfolge aus IDEEN.md: besonderer Move, Sounds, Essen, Sprechen.
+1. ~~Rig-Laufzeit und Timelines mit den Teilen aus Weg B bauen.~~ Erledigt, inklusive Haare und Hörner als eigene Teile.
+2. ~~Hauptseite auf das Rig umstellen, Morph-Renderer entfernen.~~ Erledigt; Essen, Moves, Leerlauf und Sounds laufen über das Rig.
+3. Teile-Sheets mit dem Bildwerkzeug erzeugen und einwechseln. Wichtig dabei: Arme und Hände brauchen eine Kontur oder eine leicht andere Farbe als das Gesicht, sonst verschwinden sie, wenn sie vor dem Körper liegen.
+4. Rig-Editor ergänzen, Drehpunkte sauber setzen.
+5. Beine als Teile, damit Sprünge die Füße anziehen und ein Laufzyklus möglich wird.
+6. Danach die Ideen aus IDEEN.md: Sprechen, Designer, Welt.
 
 ## Entscheidungen, die offen sind
 

@@ -7,12 +7,11 @@
 const VERSION = '__VERSION__';
 const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal' : VERSION}`;
 const FILES = [
-  './', 'index.html', 'styles.css', 'app.js', 'monster-motion.js', 'sounds.js',
-  'rig.html', 'rig.js', 'rig-app.js', 'manifest.webmanifest',
-  'assets/momo.png', 'assets/pip.png', 'assets/motion.json', 'assets/rig.json',
-  'assets/icon-192.png', 'assets/icon-512.png',
+  './', 'index.html', 'styles.css', 'app.js', 'monster-motion.js', 'rig.js', 'sounds.js', 'manifest.webmanifest',
+  'assets/momo.png', 'assets/pip.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png',
   ...['body', 'eye-left', 'eye-right', 'mouth', 'mouth-open', 'mouth-laugh', 'arm-left', 'arm-right']
-    .flatMap(part => ['momo', 'pip'].map(monster => `assets/parts/${monster}-${part}.png`))
+    .flatMap(part => ['momo', 'pip'].map(monster => `assets/parts/${monster}-${part}.png`)),
+  'assets/parts/momo-hair.png', 'assets/parts/pip-horn-left.png', 'assets/parts/pip-horn-right.png'
 ];
 
 self.addEventListener('install', event => {

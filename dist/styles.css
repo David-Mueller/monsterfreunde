@@ -25,9 +25,12 @@ h1{font-size:clamp(27px,6.8vw,38px);font-weight:850;letter-spacing:-.045em;line-
 .character{transform-origin:50% 94%;will-change:transform}
 .sprite{background-image:var(--sheet);background-size:400% 200%;background-position:0% 0%;background-repeat:no-repeat;pointer-events:none}
 .main-sprite{filter:drop-shadow(0 9px 0 #30043119);position:relative}
-.main-sprite canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
-.main-sprite canvas[hidden]{display:none}
 .main-sprite.rendered{background-image:none}
+.part{position:absolute;display:block;pointer-events:none;will-change:transform}
+.part img,.eye-white{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pupil{position:absolute;left:50%;top:50%;width:54%;height:54%;margin:-27% 0 0 -27%;border-radius:50%;transition:opacity .05s}
+.lid{position:absolute;inset:-2%;border-radius:50%;background:var(--skin);transform-origin:50% 0;transform:scaleY(0)}
+.lid.lower{transform-origin:50% 100%}
 .ground{position:absolute;width:43%;height:5%;border-radius:50%;left:28.5%;top:94%;background:#2306293d;filter:blur(5px);will-change:transform,opacity}
 .arrow{flex:none;position:absolute;top:48%;z-index:3;display:grid;place-items:center;width:44px;height:44px;background:#ffffff0b;border:1px solid #ffffff1c;border-radius:50%;color:#fff9ffb3;transition:background .2s,transform .2s}
 .arrow:hover{background:#ffffff20}

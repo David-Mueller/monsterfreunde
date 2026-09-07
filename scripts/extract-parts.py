@@ -96,6 +96,24 @@ for name in ('momo', 'pip'):
     # Torso: skin region opened with a disk wider than an arm.
     torso = largest(ndimage.binary_opening(ndimage.binary_fill_holes(skin_mask(p0)), structure=disk(int(n*.055))))
     torso_wide = ndimage.binary_dilation(torso, structure=disk(int(n*.02)))
+    # Accent parts by colour: Momo's cobalt hair, Pip's raspberry horns. They
+    # go behind the body and can swing on their own. The mask is widened a
+    # little so a small turn never opens a gap against the face.
+    rgb = p0[..., :3].astype(int)
+    accent = opaque & ~skin_mask(p0) & ~white & ~dark
+    accent_parts = {}
+    if name == 'momo':
+        accent_parts['hair'] = accent & (rgb[..., 2] > rgb[..., 1] + 30)
+    else:
+        accent_parts['horns'] = accent & (rgb[..., 0] > 140) & (rgb[..., 1] < 110)
+    accent_masks = {}
+    for part_name, raw in accent_parts.items():
+        cleaned = ndimage.binary_opening(raw, structure=disk(2))
+        cleaned = ndimage.binary_fill_holes(ndimage.binary_closing(cleaned, structure=disk(4)))
+        labels, count = ndimage.label(cleaned)
+        sizes = ndimage.sum(cleaned, labels, range(1, count+1))
+        keep = [i+1 for i, size in enumerate(sizes) if size > n*n*.002]
+        accent_masks[part_name] = np.isin(labels, keep)
     # Body: pose 0 without the arm stubs beside the torso.
     stubs = np.zeros_like(opaque)
     for side in ('left', 'right'):
@@ -103,6 +121,8 @@ for name in ('momo', 'pip'):
         if part is not None:
             stubs |= part
     body = opaque & ~ndimage.binary_dilation(stubs, structure=disk(2))
+    for mask in accent_masks.values():
+        body &= ~mask
     # Face features are removed from the body and drawn as separate parts.
     whites = white & ndimage.binary_opening(white, structure=disk(4))
     labels, count = ndimage.label(whites)
@@ -131,6 +151,21 @@ for name in ('momo', 'pip'):
     body_image = inpaint(p0, hole)
     parts = {}
     parts['body'] = {'box': save(body_image, body, OUT/f'{name}-body.png'), 'z': 2}
+    for part_name, mask in accent_masks.items():
+        wide = ndimage.binary_dilation(mask, structure=disk(int(n*.02))) & opaque
+        ys, xs = np.where(mask)
+        if part_name == 'horns':
+            # Two horns, each pivoting at its base.
+            labels, count = ndimage.label(mask)
+            for i, side in zip(sorted(range(1, count+1), key=lambda i: np.where(labels == i)[1].mean())[:2], ('left', 'right')):
+                one = ndimage.binary_dilation(labels == i, structure=disk(int(n*.02))) & opaque
+                hy, hx = np.where(labels == i)
+                box = save(p0, one, OUT/f'{name}-horn-{side}.png')
+                parts[f'horn-{side}'] = {'box': box, 'pivot': [int(hx.mean()), int(hy.max())], 'z': 1}
+        else:
+            box = save(p0, wide, OUT/f'{name}-{part_name}.png')
+            centre = [int((eye_masks[0].nonzero()[1].mean() + eye_masks[1].nonzero()[1].mean()) / 2), int(eye_masks[0].nonzero()[0].mean())]
+            parts[part_name] = {'box': box, 'pivot': centre, 'z': 1}
     for side, mask in zip(('left', 'right'), eye_masks):
         eye = p0.copy()
         eye[ndimage.binary_erosion(mask, structure=disk(3)), :3] = 255  # pupils are drawn in code

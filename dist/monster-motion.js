@@ -1,59 +1,16 @@
 'use strict';
 
-// Only complete drawings are ever shown. A clip is a list of poses with
-// timings; the drawing cuts from one pose to the next, and the spring-driven
-// body transform in app.js supplies all continuous motion. Nothing is blended
-// or warped, so every frame is exactly one of the illustrated poses.
-class MonsterRenderer {
-  constructor(root, landmarks) {
-    this.root = root;
-    this.landmarks = landmarks;
-    this.canvas = document.createElement('canvas');
-    this.canvas.setAttribute('aria-hidden', 'true');
-    root.append(this.canvas);
-    this.context = this.canvas.getContext('2d');
-    this.frame = 0;
-    this.size = 0;
-  }
-
-  setMonster(key, image) {
-    this.key = key;
-    this.image = image;
-    this.frame = 0;
-    this.root.classList.add('rendered');
-    this.render();
-  }
-
-  // Shows pose `frame`; re-draws only when the pose or the size changed.
-  show(frame) {
-    const size = Math.max(1, Math.round(this.root.clientWidth * Math.min(window.devicePixelRatio || 1, 2)));
-    if (frame === this.frame && size === this.size) return;
-    this.frame = frame;
-    this.render(size);
-  }
-
-  render(size = this.size || Math.max(1, Math.round(this.root.clientWidth * Math.min(window.devicePixelRatio || 1, 2)))) {
-    if (!this.image) return;
-    if (size !== this.size) { this.size = size; this.canvas.width = size; this.canvas.height = size; }
-    const context = this.context, frame = this.frame, image = this.image;
-    const cellWidth = image.naturalWidth / 4, cellHeight = image.naturalHeight / 2;
-    // Each pose is shifted so its mouth sits on the centre line: the drawings
-    // are not perfectly centred in their cells and would otherwise jump.
-    const offset = Math.round(this.landmarks[this.key][frame].offset[0] * size);
-    context.clearRect(0, 0, size, size);
-    context.drawImage(image, (frame % 4) * cellWidth, Math.floor(frame / 4) * cellHeight, cellWidth, cellHeight, offset, 0, size, size * cellHeight / cellWidth);
-  }
-}
-
+// Clips, whole-body motion and the spring used by app.js and rig.js. The
+// drawing itself is assembled from parts by MonsterRig (rig.js).
 const MonsterMotion = (() => {
   const clamp=value=>Math.max(0,Math.min(1,value));
   const smooth=value=>{const t=clamp(value);return clamp(t*t*t*(t*(t*6-15)+10));};
   // Two hops: crouch from `start`, airborne between `takeoff` and `landing`.
   const hops=[{start:0,takeoff:.24,landing:.88,height:62},{start:.97,takeoff:1.17,landing:1.71,height:42}];
-  // `keys` are [seconds, pose]; the drawing switches halfway between two keys.
-  // `still` is the pose shown when motion is reduced, `moments` are named
-  // instants (seconds) that sounds and effects hook into. Every clip starts
-  // from whatever pose is on screen and ends in the neutral pose 0.
+  // `keys` are [seconds, pose] from the original pose sheets and document the
+  // intended silhouette of each phase; the rig derives its own channels from
+  // the clip name and time. `moments` are named instants (seconds) that
+  // sounds and effects hook into. Every clip ends in the neutral pose.
   const clips={
     settle:{keys:[[0,0],[.35,0]],still:0,moments:[]},
     blink:{keys:[[0,0],[.075,1],[.12,1],[.27,0]],still:0,moments:[]},
@@ -80,19 +37,6 @@ const MonsterMotion = (() => {
       moments:[{at:.3,kind:'takeoff'},{at:.45,kind:'whirl'},{at:1.3,kind:'land'},{at:1.45,kind:'tada'}]},
   };
   for (const clip of Object.values(clips)) clip.duration=clip.keys[clip.keys.length-1][0];
-  // The pose to show at `elapsed` seconds: the previous key until halfway to
-  // the next one, then the next. `initial` replaces pose 0 at the very start
-  // so an interrupted action continues from the drawing already on screen.
-  function poseAt(clip,elapsed,initial=0) {
-    const keys=clip.keys;
-    for (let i=1;i<keys.length;i++) {
-      if (elapsed<keys[i][0]) {
-        const from=i===1?initial:keys[i-1][1];
-        return elapsed-keys[i-1][0] < (keys[i][0]-keys[i-1][0])/2 ? from : keys[i][1];
-      }
-    }
-    return 0;
-  }
   // Whole-body transform for the current instant: idle breathing plus the
   // action's sway, giggle, or ballistic hop. `tempo` scales the breathing.
   function body(action,t,duration,clock,tempo=1) {
@@ -208,5 +152,5 @@ const MonsterMotion = (() => {
     // A short push, e.g. a small bounce when the drawing changes.
     kick(amount){this.velocity+=amount;}
   }
-  return {clamp,smooth,clips,hops,poseAt,body,Spring};
+  return {clamp,smooth,clips,hops,body,Spring};
 })();

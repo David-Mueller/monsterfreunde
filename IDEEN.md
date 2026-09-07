@@ -8,7 +8,7 @@ Stand: 7. September 2026. Diese Datei sammelt Ideen; sie bedeutet nicht, dass al
 - [x] Bewegte Monster mit Blinzeln und Begrüßung.
 - [x] Kitzeln mit visueller Reaktion und Sprechblase.
 - [x] Hüpfen und Tanzen.
-- [x] Federnde Bewegungen und Sprungschatten. Posen wechseln als saubere Schnitte ohne Morphen; flüssigere Bewegung kommt mit dem Baukasten-Rig.
+- [x] Baukasten-Rig mit federnden Bewegungen: Arme, Augen, Mund, Haare und Hörner bewegen sich einzeln, ohne Morphen und ohne Schnitte.
 - [x] Touch-Bedienung und Hochformat für das Telefon.
 
 ## Vorgeschlagene nächste Schritte
@@ -56,8 +56,9 @@ Das visuelle Kitzeln ist bereits vorhanden und hat jetzt hörbares Lachen.
 
 ### Grundlage für alles Weitere: Baukasten-Rig
 
-- [ ] Monster in einzelne Teile zerlegen und per Rig animieren statt ganze Zeichnungen zu morphen. Konzept, Teileliste und Reihenfolge stehen in [ANIMATION.md](ANIMATION.md).
-- [ ] Zuerst mit Teilen aus den vorhandenen Zeichnungen, danach mit eigens erzeugten Teile-Sheets.
+- [x] Monster in einzelne Teile zerlegen und per Rig animieren statt ganze Zeichnungen zu morphen. Konzept, Teileliste und Reihenfolge stehen in [ANIMATION.md](ANIMATION.md).
+- [x] Zuerst mit Teilen aus den vorhandenen Zeichnungen.
+- [ ] Danach mit eigens erzeugten Teile-Sheets; Prompts liegen in `asset-prompts.json`.
 
 ### 5. Monster-Designer
 

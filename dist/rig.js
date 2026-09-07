@@ -4,9 +4,10 @@
 // numeric channels into DOM transforms on separately drawn parts. Nothing is
 // ever blended or warped at pixel level, so every frame is a clean drawing.
 //
-// Channels: body {x,y,r,sx,sy,height} in the same units as MonsterMotion.body,
-// armLeft/armRight as absolute directions in degrees (0 = right, 90 = down),
-// eyes {open 0..1, happy 0..1, gazeX, gazeY}, mouth variant and mouth scale.
+// Channels: armLeft/armRight as absolute directions in degrees (0 = right,
+// 90 = down), armLeftLift/armRightLift as a small raise in percent, eyes
+// {open 0..1, happy 0..1, gazeX, gazeY}, mouth variant and mouth scale, and
+// hair {r, sx, sy} for hair or horns that swing behind the body.
 
 const PUPIL = { momo: '#171449', pip: '#4a0f2e' };
 
@@ -19,6 +20,7 @@ class MonsterRig {
     this.parts = {};
     root.replaceChildren();
     root.style.setProperty('--skin', `rgb(${this.data.skin.join(',')})`);
+    root.classList.add('rendered');
     const parts = this.data.parts;
     for (const [name, part] of Object.entries(parts)) {
       const element = document.createElement(name.startsWith('eye') ? 'div' : 'img');
@@ -45,7 +47,6 @@ class MonsterRig {
       this.parts[name] = element;
       if (part.pivot && part.tip) part.drawn = Math.atan2(part.tip[1] - part.pivot[1], part.tip[0] - part.pivot[0]) * 180 / Math.PI;
     }
-    this.mouth = 'mouth';
   }
 
   place(element, box, pivot) {
@@ -85,6 +86,13 @@ class MonsterRig {
       element.style.visibility = shown ? 'visible' : 'hidden';
       if (shown) element.style.transform = `scale(${state.mouthScaleX ?? 1},${state.mouthScaleY ?? 1})`;
     }
+    const hair = state.hair || {};
+    for (const name of ['hair', 'horn-left', 'horn-right']) {
+      const element = this.parts[name];
+      if (!element) continue;
+      const sway = name === 'horn-right' ? -(hair.r || 0) : (hair.r || 0);
+      element.style.transform = `rotate(${sway}deg) scale(${hair.sx ?? 1},${hair.sy ?? 1})`;
+    }
   }
 }
 
@@ -93,21 +101,31 @@ class MonsterRig {
 const RigMotion = (() => {
   const { smooth, clamp, hops } = MonsterMotion;
   // Absolute arm directions in degrees: 0 points right, 90 points down.
+  // Up-left is written as 235 rather than -125 so a swing from rest always
+  // travels outside the body, never across it. Right-arm values mirror left.
   const REST = { armLeft: 112, armRight: 68 };
+  const mirror = angle => 180 - angle;
+  function both(state, left, lift = 0) { state.armLeft = left; state.armRight = mirror(left); state.armLeftLift = lift; state.armRightLift = lift; }
   function pose(action, t, duration, clock) {
-    const state = { armLeft: REST.armLeft + Math.sin(clock * 2.1) * 2, armRight: REST.armRight - Math.sin(clock * 2.1 + .4) * 2, eyes: { open: 1, happy: 0, gazeX: 0, gazeY: 0 }, mouth: 'mouth', mouthScaleX: 1, mouthScaleY: 1 };
-    if (!action) return state;
+    const state = {
+      armLeft: REST.armLeft + Math.sin(clock * 2.1) * 2, armRight: REST.armRight - Math.sin(clock * 2.1 + .4) * 2,
+      armLeftLift: 0, armRightLift: 0,
+      eyes: { open: 1, happy: 0, gazeX: .18 * Math.sin(clock * .7), gazeY: .1 * Math.sin(clock * .5 + 1) },
+      mouth: 'mouth', mouthScaleX: 1, mouthScaleY: 1
+    };
+    if (!action || action === 'settle') return state;
     const envelope = smooth(t / .22) * smooth((duration - t) / .38);
     if (action === 'blink') {
       state.eyes.open = t < .075 ? 1 - smooth(t / .075) : t < .12 ? 0 : smooth((t - .12) / .15);
     } else if (action === 'wave') {
-      const up = smooth(t / .3) * smooth((duration - t) / .36);
-      state.armRight = REST.armRight + (-70 - REST.armRight) * up + Math.sin(t * 14) * 22 * up;
+      const up = smooth(t / .26) * smooth((duration - t) / .36);
+      state.armRight = REST.armRight + (-70 - REST.armRight) * up + Math.sin(t * 15) * 24 * up;
       state.armRightLift = up * 6;
       state.mouth = up > .5 ? 'mouth-open' : 'mouth';
       state.eyes.gazeX = .3 * up;
+      state.eyes.happy = .3 * up;
     } else if (action === 'tickle') {
-      const in_ = smooth(t / .24) * smooth((duration - t) / .44);
+      const in_ = smooth(t / .2) * smooth((duration - t) / .44);
       // Arms flail out to the sides while giggling.
       state.armLeft = REST.armLeft + (160 - REST.armLeft) * in_ + Math.sin(t * 24) * 14 * in_;
       state.armRight = REST.armRight + (20 - REST.armRight) * in_ - Math.sin(t * 24 + 1) * 14 * in_;
@@ -120,7 +138,6 @@ const RigMotion = (() => {
       const swing = Math.sin(phase) * envelope;
       // One arm up and outward while the other reaches out sideways, alternating.
       const k = .5 + .5 * swing;
-      // Up-left is written as 235 rather than -125 so the swing stays outside the body.
       const left = 165 + (235 - 165) * k, right = 15 + (-55 - 15) * (1 - k);
       state.armLeft = REST.armLeft + (left - REST.armLeft) * envelope;
       state.armRight = REST.armRight + (right - REST.armRight) * envelope;
@@ -132,20 +149,70 @@ const RigMotion = (() => {
       for (const { start, takeoff, landing } of hops) {
         if (t >= start && t < takeoff) {
           const crouch = smooth((t - start) / (takeoff - start));
-          state.armLeft = REST.armLeft + 30 * crouch; state.armRight = REST.armRight - 30 * crouch;
+          both(state, REST.armLeft + 30 * crouch);
         } else if (t >= takeoff && t < landing) {
           const p = (t - takeoff) / (landing - takeoff), up = Math.sin(p * Math.PI);
-          state.armLeft = REST.armLeft + 30 + (240 - REST.armLeft - 30) * smooth(p * 3);
-          state.armRight = REST.armRight - 30 + (-60 - REST.armRight + 30) * smooth(p * 3);
-          state.armLeftLift = 12 * up; state.armRightLift = 12 * up;
+          both(state, REST.armLeft + 30 + (240 - REST.armLeft - 30) * smooth(p * 3), 12 * up);
           state.mouth = 'mouth-open';
           state.eyes.gazeY = -.4 * up;
         } else if (t >= landing && t < landing + .32) {
           const dt = t - landing, recoil = Math.exp(-dt * 12) * Math.sin(dt * 30);
-          state.armLeft = REST.armLeft + 24 * recoil; state.armRight = REST.armRight - 24 * recoil;
+          both(state, REST.armLeft + 24 * recoil);
           state.eyes.happy = clamp(1 - dt * 3) * .5;
         }
       }
+    } else if (action === 'hop') {
+      if (t < .2) both(state, REST.armLeft + 20 * smooth(t / .2));
+      else if (t < .55) { const p = (t - .2) / .35; both(state, REST.armLeft + 20 + (200 - REST.armLeft - 20) * smooth(p * 2.5), 8 * Math.sin(p * Math.PI)); }
+      else { const dt = t - .55; both(state, REST.armLeft + 20 * Math.exp(-dt * 12) * Math.sin(dt * 30)); }
+      state.eyes.happy = .3;
+    } else if (action === 'peek') {
+      // Eyes lead, the body follows: look one way, then the other.
+      const look = Math.sin(t * Math.PI / .8) * smooth(t / .2) * smooth((duration - t) / .3);
+      state.eyes.gazeX = .8 * look;
+      state.eyes.gazeY = -.15 * Math.abs(look);
+      state.armLeft = REST.armLeft - 6 * look; state.armRight = REST.armRight - 6 * look;
+    } else if (action === 'eat') {
+      // Arms up in anticipation, then the hands come to the cheeks; the
+      // channel springs carry the arms from one target to the next.
+      const active = smooth(t / .22) * smooth((2.45 - t) / .3);
+      const excited = t < .95;
+      // Hands rise beside the head rather than onto the face: an arm over the
+      // same-coloured face would vanish, beside the head it stays visible.
+      const left = REST.armLeft + ((excited ? 225 : 252) - REST.armLeft) * active;
+      state.armLeft = left; state.armRight = mirror(left);
+      state.armLeftLift = (excited ? 8 : 14) * active; state.armRightLift = state.armLeftLift;
+      state.eyes.happy = (excited ? .2 : .6) * active;
+      state.eyes.gazeY = excited ? .5 * active : 0;
+      if (t < .95) state.mouth = 'mouth-open';
+      else if (t < 2.2) {
+        state.mouth = 'mouth';
+        const chew = .5 + .5 * Math.sin((t - 1.05) * Math.PI * 2 / .35 - Math.PI / 2);
+        state.mouthScaleY = .75 + .5 * chew; state.mouthScaleX = 1.05 - .1 * chew;
+      } else {
+        state.mouth = 'mouth-open';
+        state.mouthScaleY = 1 + .25 * Math.sin(clamp((t - 2.2) / .4) * Math.PI);
+      }
+    } else if (action === 'yuck') {
+      const in_ = smooth(t / .2) * smooth((duration - t) / .3);
+      state.eyes.open = 1 - in_;
+      state.mouthScaleX = 1 - .3 * in_; state.mouthScaleY = 1 - .35 * in_;
+      state.armLeft = REST.armLeft + (150 - REST.armLeft) * in_ + Math.sin(t * 22) * 8 * in_;
+      state.armRight = REST.armRight + (30 - REST.armRight) * in_ + Math.sin(t * 22) * 8 * in_;
+    } else if (action === 'whirl') {
+      if (t < .3) { const wind = smooth(t / .3); both(state, REST.armLeft + 25 * wind); }
+      else if (t < 1.45) { both(state, 240, 10); state.mouth = 'mouth-open'; }
+      else {
+        const dt = t - 1.45, dizzy = Math.exp(-dt * 1.5);
+        both(state, 252, 14 * smooth(dt / .15));
+        state.eyes.happy = .7 * dizzy; state.eyes.gazeX = .7 * Math.sin(dt * 9) * dizzy; state.eyes.gazeY = .3 * Math.cos(dt * 7) * dizzy;
+        state.mouth = 'mouth-laugh';
+      }
+    } else if (action === 'flip') {
+      if (t < .3) { const crouch = smooth(t / .3); both(state, REST.armLeft + 30 * crouch); state.eyes.gazeY = -.4 * crouch; }
+      else if (t < 1.3) { both(state, 240, 12); state.mouth = 'mouth-open'; }
+      else if (t < 1.7) { const dt = t - 1.3, recoil = Math.exp(-dt * 11) * Math.sin(dt * 28); both(state, REST.armLeft + 24 * recoil); }
+      else { const proud = smooth((t - 1.7) / .2) * smooth((duration - t) / .25); both(state, REST.armLeft + (240 - REST.armLeft) * proud, 10 * proud); state.eyes.happy = .6 * proud; state.mouth = proud > .5 ? 'mouth-open' : 'mouth'; }
     }
     return state;
   }
