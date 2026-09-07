@@ -296,24 +296,33 @@ MonsterRenderer.joints=[1/3,2/3];
 const MonsterMotion = (() => {
   const clamp=value=>Math.max(0,Math.min(1,value));
   const smooth=value=>{const t=clamp(value);return clamp(t*t*t*(t*(t*6-15)+10));};
-  // Pose timings are seconds; the renderer computes every frame in between.
+  // Two hops: crouch from `start`, airborne between `takeoff` and `landing`.
+  const hops=[{start:0,takeoff:.24,landing:.88,height:62},{start:.97,takeoff:1.17,landing:1.71,height:42}];
+  // `keys` are [seconds, pose]; the renderer computes every frame in between.
+  // `still` is the pose shown when motion is reduced, `moments` are named
+  // instants (seconds) that sounds and effects can hook into.
   const clips={
-    settle:[[0,0],[.35,0]],
-    blink:[[0,0],[.075,1],[.12,1],[.27,0]],
-    wave:[[0,0],[.30,4],[1.02,4],[1.38,0]],
-    tickle:[[0,0],[.24,7],[1.36,7],[1.80,0]],
-    jump:[[0,0],[.24,5],[.43,6],[.70,6],[.91,0],[1.17,5],[1.34,6],[1.52,6],[1.74,0],[2.05,0]],
-    dance:[[0,0],[.34,2],[.90,3],[1.46,2],[2.02,3],[2.58,2],[3.14,3],[3.70,2],[4.18,0]],
+    settle:{keys:[[0,0],[.35,0]],still:0,moments:[]},
+    blink:{keys:[[0,0],[.075,1],[.12,1],[.27,0]],still:0,moments:[]},
+    wave:{keys:[[0,0],[.30,4],[1.02,4],[1.38,0]],still:4,moments:[{at:.30,kind:'wave'}]},
+    tickle:{keys:[[0,0],[.24,7],[1.36,7],[1.80,0]],still:7,moments:[{at:.10,kind:'giggle'},{at:.62,kind:'giggle'},{at:1.05,kind:'giggle'}]},
+    jump:{keys:[[0,0],[.24,5],[.43,6],[.70,6],[.91,0],[1.17,5],[1.34,6],[1.52,6],[1.74,0],[2.05,0]],still:5,
+      moments:hops.flatMap(hop => [{at:hop.takeoff,kind:'takeoff'},{at:hop.landing,kind:'land'}])},
+    dance:{keys:[[0,0],[.34,2],[.90,3],[1.46,2],[2.02,3],[2.58,2],[3.14,3],[3.70,2],[4.18,0]],still:3,
+      moments:[.34,.90,1.46,2.02,2.58,3.14,3.70].map(at => ({at,kind:'beat'}))},
   };
+  for (const clip of Object.values(clips)) clip.duration=clip.keys[clip.keys.length-1][0];
   function segment(clip,elapsed) {
-    for (let i=1;i<clip.length;i++) {
-      if (elapsed<clip[i][0]) return {from:clip[i-1][1],to:clip[i][1],mix:smooth((elapsed-clip[i-1][0])/(clip[i][0]-clip[i-1][0])),first:i===1};
+    const keys=clip.keys;
+    for (let i=1;i<keys.length;i++) {
+      if (elapsed<keys[i][0]) return {from:keys[i-1][1],to:keys[i][1],mix:smooth((elapsed-keys[i-1][0])/(keys[i][0]-keys[i-1][0])),first:i===1};
     }
     return {from:0,to:0,mix:0,done:true};
   }
-  function body(action,t,duration,clock,key) {
-    const speed=key==='pip'?1.18:1;
-    const breath=Math.sin(clock*2.1*speed);
+  // Whole-body transform for the current instant: idle breathing plus the
+  // action's sway, giggle, or ballistic hop. `tempo` scales the breathing.
+  function body(action,t,duration,clock,tempo=1) {
+    const breath=Math.sin(clock*2.1*tempo);
     const result={x:0,y:-.35*(breath+1),r:.3*Math.sin(clock*.9),sx:1+.006*breath,sy:1-.008*breath,height:0,life:.16};
     if (!action || action==='blink') return result;
     const envelope=smooth(t/.22)*smooth((duration-t)/.38);
@@ -337,7 +346,7 @@ const MonsterMotion = (() => {
       result.y-=1.5*Math.sin(t*7)*envelope;
     } else if (action==='jump') {
       // Anticipation, a ballistic arc, then a damped landing and smaller hop.
-      for (const [start,takeoff,landing,height] of [[0,.24,.88,62],[.97,1.17,1.71,42]]) {
+      for (const {start,takeoff,landing,height} of hops) {
         if(t>=start && t<takeoff) {
           const crouch=Math.sin((t-start)/(takeoff-start)*Math.PI);
           result.sx+=.085*crouch; result.sy-=.12*crouch;
@@ -364,5 +373,5 @@ const MonsterMotion = (() => {
       return this.value;
     }
   }
-  return {clamp,smooth,clips,segment,body,Spring};
+  return {clamp,smooth,clips,hops,segment,body,Spring};
 })();
