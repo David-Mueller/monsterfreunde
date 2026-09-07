@@ -297,6 +297,7 @@ function selectMonster(key, greet = true) {
   selected = key;
   const chosen = monsters[key];
   document.body.dataset.monster = key;
+  try { window.dispatchEvent(new CustomEvent('monster:selected', { detail: { monster: key } })); } catch { /* egal */ }
   document.querySelector('meta[name="theme-color"]').content = chosen.theme;
   $('#monster-name').textContent = chosen.name;
   $('#personality').textContent = chosen.personality;

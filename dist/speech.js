@@ -287,6 +287,17 @@
     else start();
   });
 
+  // --- Monsterwechsel während einer laufenden Session: Gespräch mit dem ---
+  // neuen Monster nahtlos neu starten (Persona/Stimme gelten pro Session).
+  window.addEventListener('monster:selected', (e) => {
+    const next = e.detail && e.detail.monster;
+    if (!next) return;
+    if ((active || starting) && next !== sessionMonster) {
+      stop();
+      start();
+    }
+  });
+
   // --- UI-Aktionen ins Gespräch einspeisen ---
   // Wenn das Kind während einer laufenden Session in der App selbst kitzelt,
   // füttert usw., erfährt das Monster davon und reagiert spontan mündlich.
