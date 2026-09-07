@@ -69,6 +69,9 @@ const MonsterMotion = (() => {
       moments:[{at:.95,kind:'grab'},{at:1.15,kind:'chew'},{at:1.5,kind:'chew'},{at:1.85,kind:'chew'},{at:2.3,kind:'gulp'}]},
     // Refusing a snack: eyes shut, head shake, then neutral.
     yuck:{keys:[[0,0],[.25,1],[1.3,1],[1.6,0]],still:1,moments:[{at:.3,kind:'yuck'}]},
+    // Idle life while nobody plays: a curious look around and a small hop.
+    peek:{keys:[[0,0],[1.6,0]],still:0,moments:[]},
+    hop:{keys:[[0,0],[.2,6],[.5,6],[.75,0]],still:6,moments:[{at:.2,kind:'pop'},{at:.55,kind:'land'}]},
     // Momo's trick: a wind-up, two full spins with arms up, a dizzy wobble.
     whirl:{keys:[[0,0],[.3,5],[1.45,5],[1.55,7],[2.2,7],[2.5,0]],still:5,
       moments:[{at:.3,kind:'whirl'},{at:1.45,kind:'land'},{at:1.6,kind:'giggle'}]},
@@ -128,6 +131,14 @@ const MonsterMotion = (() => {
         const p=(t-2.2)/.4,gulp=Math.sin(p*Math.PI);
         result.sy+=.07*gulp; result.sx-=.04*gulp; result.y-=3*gulp;
       }
+    } else if (action==='peek') {
+      // Lean to one side, then the other, as if something caught the eye.
+      const look=Math.sin(t*Math.PI/.8)*smooth(t/.25)*smooth((duration-t)/.3);
+      result.r=6*look; result.x=8*look; result.y-=1.5*Math.abs(look);
+    } else if (action==='hop') {
+      if (t<.2) { const crouch=Math.sin(t/.2*Math.PI); result.sx+=.06*crouch; result.sy-=.08*crouch; }
+      else if (t<.55) { const p=(t-.2)/.35; result.height=4*22*p*(1-p); result.sy+=.03*Math.sin(p*Math.PI); result.sx-=.02*Math.sin(p*Math.PI); }
+      else { const dt=t-.55,recoil=Math.exp(-dt*12)*Math.sin(dt*30); result.sx+=.06*recoil; result.sy-=.08*recoil; }
     } else if (action==='whirl') {
       if (t<.3) {
         const wind=smooth(t/.3);

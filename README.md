@@ -8,6 +8,7 @@ Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln,
 - Kein Morphen: Es ist immer genau eine der gezeichneten Posen zu sehen, jede exakt zentriert. Posen wechseln als Schnitte, jede Aktion beginnt bei der gerade sichtbaren Pose und endet in der Neutralpose. Ein kleiner Federstoß bei jedem Wechsel lässt den Schnitt wie einen Schritt wirken.
 - Blinzeln, Atmen, Begrüßung, Kitzeln, Hüpfen und Tanzen.
 - Ein besonderer Move pro Monster: Momos Wirbel und Pips Salto.
+- Leben im Leerlauf: Wer eine Weile nichts antippt, sieht das Monster umherschauen, hüpfen oder winken. Landungen vibrieren kurz auf Geräten, die das können.
 - Füttern mit Keks, Apfel und Saft: Der Snack fliegt zum Mund, das Monster jubelt, kaut und schluckt. Jedes Monster hat einen Lieblingssnack und einen, den es verweigert.
 - Federnde Körperbewegung und zum Sprung passender Schatten.
 - Auswahl per Touch, Wischen oder Tastatur.

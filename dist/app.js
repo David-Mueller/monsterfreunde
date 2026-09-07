@@ -50,6 +50,9 @@ let currentClip = null;
 let previousTime = 0;
 let nextBlink = 0;
 let snackFlight = null;
+let lastInteraction = 0;
+let nextIdle = 0;
+const IDLE = ['peek', 'hop', 'wave', 'peek'];
 const images = {};
 const springs = Object.fromEntries(Object.entries({x:0,y:0,r:0,sx:1,sy:1,height:0}).map(([key,value]) => [key,new MonsterMotion.Spring(value)]));
 
@@ -80,6 +83,12 @@ function idle() {
   scheduleFrame();
 }
 
+// Something touched the app: postpone the idle behaviour.
+function noteInteraction(now = performance.now()) {
+  lastInteraction = now;
+  nextIdle = now + 7000 + Math.random() * 6000;
+}
+
 function startClip(name) {
   if (!ready) return;
   clearAction();
@@ -92,6 +101,7 @@ function startClip(name) {
 // Named instants inside a clip, e.g. the take-off of a jump or a dance beat.
 function moment(kind) {
   Sounds.play(kind, monster().voice);
+  if (kind === 'land' || kind === 'gulp') navigator.vibrate?.(kind === 'land' ? 28 : 18);
   if (kind === 'grab') snack.hidden = true;
   if (reduced.matches) return;
   if (kind === 'land') burst('jump');
@@ -103,6 +113,7 @@ function moment(kind) {
 function trick() {
   if (!ready) return;
   const move = monster().trick;
+  noteInteraction();
   startClip(move.clip);
   say(move.lines[Math.floor(Math.random() * move.lines.length)], currentClip.duration / currentClip.speed * 1000 + 200);
   trickButton.classList.add('active');
@@ -113,6 +124,7 @@ function trick() {
 function feed(kind) {
   if (!ready || !snackGlyphs[kind]) return;
   const [verdict, ...lines] = monster().taste[kind];
+  noteInteraction();
   startClip(verdict === 'yuck' ? 'yuck' : 'eat');
   snack.textContent = snackGlyphs[kind];
   snack.hidden = false;
@@ -133,6 +145,11 @@ function animate(now) {
   if (!ready || document.hidden) return;
   const dt = Math.min(.05, previousTime ? (now - previousTime) / 1000 : 1 / 60);
   previousTime = now;
+  if (!currentClip && !reduced.matches && now >= nextIdle && !document.hidden) {
+    // Left alone for a while: look around, hop or wave, then wait again.
+    startClip(IDLE[Math.floor(Math.random() * IDLE.length)]);
+    nextIdle = now + 9000 + Math.random() * 8000;
+  }
   if (!currentClip && !reduced.matches && now >= nextBlink) startClip('blink');
   let frame = 0;
   let target = MonsterMotion.body(null, 0, 0, now / 1000, monster().tempo);
@@ -198,6 +215,7 @@ function burst(action, count = 9) {
 
 function perform(action) {
   if (!ready || !plays.includes(action)) return;
+  noteInteraction();
   startClip(action);
   const lines = monster().lines[action];
   const duration = reduced.matches ? 900 : currentClip.duration / currentClip.speed * 1000;
@@ -210,6 +228,7 @@ function selectMonster(key, greet = true) {
   if (!monsters[key]) return;
   if (key === selected && greet && ready) { perform('tickle'); return; }
   clearAction();
+  noteInteraction();
   selected = key;
   const chosen = monsters[key];
   document.body.dataset.monster = key;
