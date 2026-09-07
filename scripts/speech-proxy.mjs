@@ -242,11 +242,11 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
 
-  if (req.method === 'POST' && req.url === '/api/session') {
+  if (req.method === 'POST' && ['/api/session','/session'].includes(req.url)) {
     return handleSession(req, res, origin);
   }
 
-  if (req.method === 'GET' && req.url === '/api/health') {
+  if (req.method === 'GET' && ['/api/health','/health'].includes(req.url)) {
     return sendJson(res, 200, { ok: true }, origin);
   }
 
