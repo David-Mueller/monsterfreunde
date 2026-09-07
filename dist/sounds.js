@@ -12,7 +12,7 @@ const Sounds = (() => {
   let enabled = true;
   try { enabled = localStorage.getItem(STORAGE) !== 'off'; } catch (error) { enabled = true; }
   const lastPlayed = {};
-  const MIN_GAP = { giggle: .09, beat: .12, takeoff: .15, land: .12, wave: .3, hello: .3, pop: .08, chew: .12, gulp: .3, yuck: .4 };
+  const MIN_GAP = { giggle: .09, beat: .12, takeoff: .15, land: .12, wave: .3, hello: .3, pop: .08, chew: .12, gulp: .3, yuck: .4, whirl: .5, tada: .5 };
   const listeners = new Set();
 
   function ensure() {
@@ -114,6 +114,18 @@ const Sounds = (() => {
         tone(ctx, out, { type: 'sawtooth', from: vary(base * 1.5), to: base * .6, start: when, duration: .42, gain: .18, attack: .02, filter: 900 });
         tone(ctx, out, { type: 'triangle', from: vary(base * 1.55), to: base * .62, start: when + .03, duration: .4, gain: .18, attack: .02 });
         return .45;
+      }
+      case 'whirl': {
+        // Rising whoosh with a wobble, for spins and somersaults.
+        tone(ctx, out, { type: 'sawtooth', from: vary(base * .5), to: base * 3.2, start: when, duration: .55, gain: .16, attack: .04, filter: 1200 });
+        noise(ctx, out, { start: when, duration: .5, gain: .18, filter: 1800 });
+        return .6;
+      }
+      case 'tada': {
+        tone(ctx, out, { type: 'triangle', from: vary(base * 2, .02), start: when, duration: .14, gain: .3, attack: .01 });
+        tone(ctx, out, { type: 'triangle', from: vary(base * 2.5, .02), start: when + .12, duration: .14, gain: .3, attack: .01 });
+        tone(ctx, out, { type: 'triangle', from: vary(base * 3, .02), start: when + .24, duration: .3, gain: .32, attack: .01 });
+        return .55;
       }
       case 'pop': {
         tone(ctx, out, { type: 'sine', from: vary(base * 2.2), to: base * 1.1, start: when, duration: .09, gain: .3, attack: .004 });

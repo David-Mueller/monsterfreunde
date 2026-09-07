@@ -69,6 +69,12 @@ const MonsterMotion = (() => {
       moments:[{at:.95,kind:'grab'},{at:1.15,kind:'chew'},{at:1.5,kind:'chew'},{at:1.85,kind:'chew'},{at:2.3,kind:'gulp'}]},
     // Refusing a snack: eyes shut, head shake, then neutral.
     yuck:{keys:[[0,0],[.25,1],[1.3,1],[1.6,0]],still:1,moments:[{at:.3,kind:'yuck'}]},
+    // Momo's trick: a wind-up, two full spins with arms up, a dizzy wobble.
+    whirl:{keys:[[0,0],[.3,5],[1.45,5],[1.55,7],[2.2,7],[2.5,0]],still:5,
+      moments:[{at:.3,kind:'whirl'},{at:1.45,kind:'land'},{at:1.6,kind:'giggle'}]},
+    // Pip's trick: a high jump with a somersault and a proud landing.
+    flip:{keys:[[0,0],[.3,5],[.5,6],[1.15,6],[1.3,5],[2.0,5],[2.3,0]],still:6,
+      moments:[{at:.3,kind:'takeoff'},{at:.45,kind:'whirl'},{at:1.3,kind:'land'},{at:1.45,kind:'tada'}]},
   };
   for (const clip of Object.values(clips)) clip.duration=clip.keys[clip.keys.length-1][0];
   // The pose to show at `elapsed` seconds: the previous key until halfway to
@@ -88,7 +94,7 @@ const MonsterMotion = (() => {
   // action's sway, giggle, or ballistic hop. `tempo` scales the breathing.
   function body(action,t,duration,clock,tempo=1) {
     const breath=Math.sin(clock*2.1*tempo);
-    const result={x:0,y:-.35*(breath+1),r:.3*Math.sin(clock*.9),sx:1+.006*breath,sy:1-.008*breath,height:0};
+    const result={x:0,y:-.35*(breath+1),r:.3*Math.sin(clock*.9),sx:1+.006*breath,sy:1-.008*breath,height:0,spin:0};
     if (!action || action==='blink') return result;
     const envelope=smooth(t/.22)*smooth((duration-t)/.38);
     if (action==='dance') {
@@ -121,6 +127,40 @@ const MonsterMotion = (() => {
         // Gulp: a stretch that travels down.
         const p=(t-2.2)/.4,gulp=Math.sin(p*Math.PI);
         result.sy+=.07*gulp; result.sx-=.04*gulp; result.y-=3*gulp;
+      }
+    } else if (action==='whirl') {
+      if (t<.3) {
+        const wind=smooth(t/.3);
+        result.r=-9*wind; result.sx+=.06*wind; result.sy-=.08*wind;
+      } else if (t<1.45) {
+        // Two full turns around the centre, fastest in the middle, with a small lift.
+        const p=(t-.3)/1.15;
+        result.spin=720*smooth(p);
+        result.height=26*Math.sin(p*Math.PI);
+        result.sx-=.03*Math.sin(p*Math.PI); result.sy+=.04*Math.sin(p*Math.PI);
+      } else {
+        // Dizzy wobble that settles down.
+        const dt=t-1.45,wobble=Math.sin(dt*16)*Math.exp(-dt*2.2);
+        result.r=8*wobble; result.x=5*wobble;
+        result.sx+=.07*Math.exp(-dt*9)*Math.sin(dt*30); result.sy-=.09*Math.exp(-dt*9)*Math.sin(dt*30);
+      }
+    } else if (action==='flip') {
+      if (t<.3) {
+        const crouch=Math.sin(t/.3*Math.PI);
+        result.sx+=.1*crouch; result.sy-=.14*crouch;
+      } else if (t<1.3) {
+        // High arc with one forward somersault.
+        const p=(t-.3)/1;
+        result.height=4*92*p*(1-p);
+        result.spin=360*smooth((p-.08)/.8);
+        result.sx-=.03*Math.sin(p*Math.PI); result.sy+=.05*Math.sin(p*Math.PI);
+      } else if (t<1.7) {
+        const dt=t-1.3,recoil=Math.exp(-dt*11)*Math.sin(dt*28);
+        result.sx+=.12*recoil; result.sy-=.15*recoil;
+      } else {
+        // Proud little bounces with the arms up.
+        const bounce=Math.max(0,Math.sin((t-1.7)*12));
+        result.y-=3*bounce*envelope; result.sy+=.015*bounce*envelope;
       }
     } else if (action==='yuck') {
       const shake=Math.sin(t*22)*Math.exp(-t*1.2);

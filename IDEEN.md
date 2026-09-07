@@ -25,16 +25,16 @@ Die erste Version bleibt ein unkompliziertes Spiel ohne Hungeranzeige oder Pfleg
 
 ### 2. Ein besonderer Move pro Monster
 
-- [ ] Jedes Monster bekommt eine eigene Aktion, die nur dieses Monster vorführen kann.
-- [ ] **Idee für Momo:** Der Wuschel wirbelt seine Haare durcheinander und schüttelt sie wieder zurecht.
-- [ ] **Idee für Pip:** Ein übermütiger Sprung mit einer kleinen Drehung und besonders federnder Landung.
-- [ ] Ausholen, Hauptbewegung und Ausklang als vollständige kleine Darbietung animieren.
-- [ ] Die endgültigen Moves gemeinsam auswählen; die Vorschläge sind noch offen.
+- [x] Jedes Monster hat einen eigenen Knopf neben den Snacks, beschriftet mit seinem Move.
+- [x] **Momo: Wirbel.** Ausholen, zwei ganze Drehungen um die Mitte mit erhobenen Armen, schwindelige Landung mit Händen an den Wangen. Ein Haarschütteln folgt, sobald die Haare ein eigenes Teil im Rig sind.
+- [x] **Pip: Salto.** Tiefes Ducken, hoher Sprung mit einem Überschlag, federnde Landung und stolzes Hüpfen mit erhobenen Armen.
+- [x] Ausholen, Hauptbewegung und Ausklang mit eigenen Sounds: Wusch, Plumps, Kichern beziehungsweise Tadaa.
+- [ ] Die Moves sind Vorschläge und lassen sich in `monster-motion.js` leicht austauschen.
 
 ### 3. Lustige Töne und Sounds
 
 - [x] Kichern beim Kitzeln, ein lustiges „Boing“ beim Hüpfen und ein Plumps bei der Landung; Kau- und Schluckgeräusche folgen mit dem Essen.
-- [ ] Einen passenden Sound zu jedem besonderen Move ergänzen.
+- [x] Einen passenden Sound zu jedem besonderen Move ergänzen.
 - [x] Momo und Pip unterschiedlich klingen lassen: eigene Stimmlage pro Monster.
 - [x] Sounds genau mit den passenden Bewegungsmomenten auslösen: Absprung, Landung, Tanzschläge, Kicherer.
 - [x] Kleine Zufallsabweichungen pro Wiedergabe, damit Wiederholungen lebendiger wirken.

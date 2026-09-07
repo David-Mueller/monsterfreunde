@@ -8,13 +8,15 @@ const monsters = {
     sheet: 'assets/momo.png', theme: '#73066d', tempo: 1, blink: [3400, 1500], voice: 250,
     lines: { tickle: ['Hihihi!', 'Nicht am Bauch!', 'Du bist kitzelig … ich auch!'], jump: ['Boing!', 'Bis zu den Wolken!'], dance: ['Wackel, wackel!', 'So geht mein Monstertanz!'] },
     // How each snack goes down: love, fine or yuck, with what the monster says.
-    taste: { cookie: ['love', 'Mmmh, ein Keks!', 'Krümel überall!'], apple: ['yuck', 'Bäh, zu gesund!'], juice: ['fine', 'Schlürf!', 'Prickelt!'] }
+    taste: { cookie: ['love', 'Mmmh, ein Keks!', 'Krümel überall!'], apple: ['yuck', 'Bäh, zu gesund!'], juice: ['fine', 'Schlürf!', 'Prickelt!'] },
+    trick: { clip: 'whirl', name: 'Wirbel', label: 'Momos Wirbel', lines: ['Wiiirbel!', 'Mir wird schwindelig!'] }
   },
   pip: {
     name: 'Pip', personality: 'Der Wirbelwind', description: 'Pip, ein fröhliches orangefarbenes Monster mit kleinen Hörnern',
     sheet: 'assets/pip.png', theme: '#473178', tempo: 1.15, blink: [2500, 1500], voice: 390,
     lines: { tickle: ['Hahaha! Nochmal!', 'Hihi, erwischt!', 'Das kitzelt!'], jump: ['Huuui!', 'Einmal bis zum Mond!'], dance: ['Wackel mit!', 'Tanzparty!'] },
-    taste: { cookie: ['yuck', 'Bäh, zu süß!'], apple: ['love', 'Knack! Lecker!', 'Mein Lieblingsapfel!'], juice: ['fine', 'Gluck, gluck!', 'Erfrischend!'] }
+    taste: { cookie: ['yuck', 'Bäh, zu süß!'], apple: ['love', 'Knack! Lecker!', 'Mein Lieblingsapfel!'], juice: ['fine', 'Gluck, gluck!', 'Erfrischend!'] },
+    trick: { clip: 'flip', name: 'Salto', label: 'Pips Salto', lines: ['Saaalto!', 'Tadaa!'] }
   }
 };
 const snackGlyphs = { cookie: '🍪', apple: '🍎', juice: '🧃' };
@@ -27,6 +29,7 @@ const $ = (selector) => document.querySelector(selector);
 const choices = [...document.querySelectorAll('[data-choice]')];
 const actions = [...document.querySelectorAll('[data-action]')];
 const snackButtons = [...document.querySelectorAll('[data-snack]')];
+const trickButton = $('#trick');
 const snack = $('#snack');
 const arrows = [...document.querySelectorAll('.arrow')];
 const sprite = $('.main-sprite');
@@ -57,6 +60,7 @@ function clearAction() {
   currentClip = null;
   actions.forEach(button => button.classList.remove('active'));
   snackButtons.forEach(button => button.classList.remove('active'));
+  trickButton.classList.remove('active');
   snackFlight?.cancel();
   snackFlight = null;
   snack.hidden = true;
@@ -93,6 +97,16 @@ function moment(kind) {
   if (kind === 'land') burst('jump');
   if (kind === 'beat') burst('dance', 3);
   if (kind === 'gulp') burst('jump', 5);
+}
+
+// The monster's own special move.
+function trick() {
+  if (!ready) return;
+  const move = monster().trick;
+  startClip(move.clip);
+  say(move.lines[Math.floor(Math.random() * move.lines.length)], currentClip.duration / currentClip.speed * 1000 + 200);
+  trickButton.classList.add('active');
+  burst('jump');
 }
 
 // Offers a snack: it flies to the mouth, then the monster eats or refuses it.
@@ -138,7 +152,9 @@ function animate(now) {
       while (running.fired < running.clip.moments.length && elapsed >= running.clip.moments[running.fired].at) moment(running.clip.moments[running.fired++].kind);
     }
   }
-  if (reduced.matches) target = { x: 0, y: 0, r: 0, sx: 1, sy: 1, height: 0 };
+  if (reduced.matches) target = { x: 0, y: 0, r: 0, sx: 1, sy: 1, height: 0, spin: 0 };
+  // Spins turn the drawing around its centre; everything else pivots at the feet.
+  sprite.style.transform = target.spin ? `rotate(${target.spin}deg)` : '';
   // A tiny bounce on every pose change reads as a step and hides the cut.
   if (frame !== renderer.frame && !reduced.matches && frame !== 1 && renderer.frame !== 1) { springs.sy.kick(-1.6); springs.sx.kick(1.1); }
   const motion = {};
@@ -202,6 +218,8 @@ function selectMonster(key, greet = true) {
   $('#personality').textContent = chosen.personality;
   sprite.setAttribute('aria-label', chosen.description);
   touch.setAttribute('aria-label', `${chosen.name} kitzeln`);
+  $('#trick-name').textContent = chosen.trick.name;
+  trickButton.setAttribute('aria-label', chosen.trick.label);
   for (const choice of choices) {
     const current = choice.dataset.choice === key;
     choice.classList.toggle('selected', current);
@@ -234,6 +252,7 @@ function changeMonster(direction = 1, focus = false) {
 choices.forEach(button => button.addEventListener('click', () => selectMonster(button.dataset.choice)));
 actions.forEach(button => button.addEventListener('click', () => perform(button.dataset.action)));
 snackButtons.forEach(button => button.addEventListener('click', () => feed(button.dataset.snack)));
+trickButton.addEventListener('click', trick);
 arrows[0].addEventListener('click', () => changeMonster(-1));
 arrows[1].addEventListener('click', () => changeMonster(1));
 $('.monster-choices').addEventListener('keydown', event => {
@@ -298,6 +317,7 @@ Promise.all([
   touch.disabled = false;
   actions.forEach(button => { button.disabled = false; });
   snackButtons.forEach(button => { button.disabled = false; });
+  trickButton.disabled = false;
   selectMonster(selected, false);
 }).catch(() => {
   $('.load-error').hidden = false;
