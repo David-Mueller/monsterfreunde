@@ -27,7 +27,23 @@
   // Ohne diese Bausteine gibt es keine Sprachsteuerung — Knopf ausblenden.
   const supported = !!(app && window.RTCPeerConnection && navigator.mediaDevices?.getUserMedia && window.fetch);
   if (!supported) { button.hidden = true; return; }
-  button.hidden = false;
+
+  // Knopf nur zeigen, wenn der Speech-Proxy wirklich erreichbar ist (Health-Check).
+  // Ohne Proxy (nicht im Tailnet / Server aus) bleibt die App komplett ohne Mikro-UI.
+  button.hidden = true;
+  let healthTimer = null;
+  async function checkProxy() {
+    try {
+      const res = await fetch('/api/health', { cache: 'no-store' });
+      button.hidden = !res.ok;
+    } catch { button.hidden = true; }
+    // Solange versteckt: alle 60 s erneut prüfen, damit der Knopf auftaucht,
+    // sobald der Proxy läuft. Sichtbar -> kein weiteres Polling nötig.
+    if (button.hidden && !healthTimer) healthTimer = setInterval(checkProxy, 60000);
+    else if (!button.hidden && healthTimer) { clearInterval(healthTimer); healthTimer = null; }
+  }
+  checkProxy();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkProxy(); });
 
   const CALLS_URL = 'https://api.openai.com/v1/realtime/calls';
 
