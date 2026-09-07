@@ -112,6 +112,9 @@ const RigMotion = (() => {
   // Up-left is written as 235 rather than -125 so a swing from rest always
   // travels outside the body, never across it. Right-arm values mirror left.
   const REST = { armLeft: 112, armRight: 68 };
+  // Thin bodies rest their arms further out so they stay visible; the rig
+  // data carries the angle per monster.
+  function setRest(left = 112) { REST.armLeft = left; REST.armRight = 180 - left; }
   const mirror = angle => 180 - angle;
   function both(state, left, lift = 0) { state.armLeft = left; state.armRight = mirror(left); state.armLeftLift = lift; state.armRightLift = lift; }
   function pose(action, t, duration, clock, options = {}) {
@@ -274,5 +277,5 @@ const RigMotion = (() => {
     }
     return state;
   }
-  return { pose, REST };
+  return { pose, REST, setRest };
 })();

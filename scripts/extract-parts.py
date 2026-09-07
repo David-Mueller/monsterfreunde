@@ -278,13 +278,31 @@ for name in ('momo', 'pip', 'lumi', 'zing'):
         tip = [int(xs[far.argmax()]), int(ys[far.argmax()])]
         box = save(p5, arm, OUT/f'{name}-arm-{side}.png')
         parts[f'arm-{side}'] = {'box': box, 'pivot': pivot, 'tip': tip, 'z': 1}
-    # Shoulders: on the torso outline at 58% height, moved 5% inwards so the
-    # flat root of each arm lies over the body and stays hidden.
-    row = np.where(torso[int(n*.58)])[0]
-    shoulders = {'left': [int(row.min()+n*.05), int(n*.58)], 'right': [int(row.max()-n*.05), int(n*.58)]}
+    # Shoulders: a little above where the resting hand hangs in pose 0, on
+    # the torso outline of that row, moved inwards so the flat root of each
+    # arm lies over the body and stays hidden. Thin bodies get a smaller
+    # inset and a more outward resting angle so the arms stay visible.
+    shoulders = {}
+    skin_filled = ndimage.binary_fill_holes(ndimage.binary_closing(skin_mask(p0), structure=disk(4)))
+    for side in ('left', 'right'):
+        hx0, hy0 = hand(0, side)
+        row_y = int(min(max(hy0 - n*.10, n*.2), n*.8))
+        row = np.where(largest(skin_filled)[row_y])[0]
+        full = np.where(largest(opaque)[row_y])[0]
+        # Shaded or striped bodies leave a narrow skin row; fall back to the
+        # full silhouette when the skin row is clearly narrower.
+        if len(row) == 0 or (len(full) and row.max()-row.min() < .6*(full.max()-full.min())):
+            row = full
+        if len(row) == 0:
+            row_y = int(n*.58); row = np.where(torso[row_y])[0]
+        width = row.max() - row.min()
+        inset = min(n*.05, width*.3)
+        shoulders[side] = [int(row.min()+inset) if side == 'left' else int(row.max()-inset), row_y]
+    rest = 112 if width > n*.3 else 124
     for side in ('left', 'right'):
         if f'arm-{side}' in parts:
             parts[f'arm-{side}']['shoulder'] = shoulders[side]
+            parts[f'arm-{side}']['rest'] = rest
             parts[f'arm-{side}']['z'] = 3
     for key in list(parts):
         if key.startswith('eye') or key.startswith('mouth'):

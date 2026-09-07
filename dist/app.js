@@ -150,13 +150,16 @@ function feed(kind) {
   snack.textContent = snackGlyphs[kind];
   snack.hidden = false;
   const flight = verdict === 'yuck' ? .35 : .95;
+  // The snack aims at this monster's mouth, wherever that sits.
+  const marks = landmarks();
+  const mouthLeft = `${marks.mouthX * 100}%`, mouthTop = `${marks.mouthY * 100}%`;
   snackFlight = snack.animate([
-    { transform: 'translate(-50%,-50%) scale(.6) rotate(-20deg)', top: '104%', opacity: 0 },
+    { transform: 'translate(-50%,-50%) scale(.6) rotate(-20deg)', left: '50%', top: '104%', opacity: 0 },
     { opacity: 1, offset: .1 },
-    { transform: 'translate(-50%,-50%) scale(1.1) rotate(10deg)', top: '30%', offset: .55 },
-    { transform: 'translate(-50%,-50%) scale(.75) rotate(0deg)', top: '52%', opacity: 1 }
+    { transform: 'translate(-50%,-50%) scale(1.1) rotate(10deg)', left: `${(50 + marks.mouthX * 100) / 2}%`, top: `${Math.max(marks.mouthY * 100 - 22, 4)}%`, offset: .55 },
+    { transform: 'translate(-50%,-50%) scale(.75) rotate(0deg)', left: mouthLeft, top: mouthTop, opacity: 1 }
   ], { duration: flight / monster().tempo * 1000, easing: 'ease-in-out', fill: 'forwards' });
-  if (verdict === 'yuck') snackFlight.onfinish = () => { snackFlight = snack.animate([{ top: '52%', opacity: 1 }, { top: '110%', opacity: 0, transform: 'translate(-50%,-50%) scale(.5) rotate(-60deg)' }], { duration: 500, easing: 'ease-in', fill: 'forwards' }); snackFlight.onfinish = () => { snack.hidden = true; }; };
+  if (verdict === 'yuck') snackFlight.onfinish = () => { snackFlight = snack.animate([{ left: mouthLeft, top: mouthTop, opacity: 1 }, { left: mouthLeft, top: '110%', opacity: 0, transform: 'translate(-50%,-50%) scale(.5) rotate(-60deg)' }], { duration: 500, easing: 'ease-in', fill: 'forwards' }); snackFlight.onfinish = () => { snack.hidden = true; }; };
   say(lines[Math.floor(Math.random() * lines.length)], currentClip.duration / currentClip.speed * 1000 + 200);
   snackButtons.find(button => button.dataset.snack === kind)?.classList.add('active');
 }
@@ -255,12 +258,21 @@ function perform(action, options = {}) {
   burst(action);
 }
 
+// Landmarks of the current monster in fractions of the rig square: where the
+// mouth is and how far down the body reaches. Tall Zing has its mouth near
+// the top, round Momo in the middle.
+function landmarks() {
+  const data = rigData[selected], n = data.cell, mouth = data.parts.mouth.box, body = data.parts.body.box;
+  return { mouthX: (mouth[0] + mouth[2]) / 2 / n, mouthY: (mouth[1] + mouth[3]) / 2 / n, headBottom: mouth[3] / n, bodyBottom: body[3] / n };
+}
+
 // Where on the monster a tap landed decides how it is tickled.
 function tickleAt(clientX, clientY) {
   const box = touch.getBoundingClientRect();
   const x = (clientX - box.left) / box.width, y = (clientY - box.top) / box.height;
-  if (y < .4) perform('tickle-head');
-  else if (y > .8) perform('tickle-feet');
+  const marks = landmarks();
+  if (y < marks.headBottom + .06) perform('tickle-head');
+  else if (y > marks.bodyBottom - .14) perform('tickle-feet');
   else if (Math.abs(x - .5) > .3) perform('tickle-side', { side: x < .5 ? 'left' : 'right' });
   else perform('tickle');
 }
@@ -290,7 +302,10 @@ function selectMonster(key, greet = true) {
   arrows[0].setAttribute('aria-label', `${monsters[keys[(index + keys.length - 1) % keys.length]].name} auswählen`);
   arrows[1].setAttribute('aria-label', `${monsters[keys[(index + 1) % keys.length]].name} auswählen`);
   entranceAnimation?.cancel();
-  if (ready) rig = new MonsterRig(sprite, rigData, key);
+  if (ready) {
+    rig = new MonsterRig(sprite, rigData, key);
+    RigMotion.setRest(rigData[key].parts['arm-left']?.rest || 112);
+  }
   if (greet && ready) {
     if (!reduced.matches) entranceAnimation = $('.entrance').animate([
       { transform: 'translateY(12px) scale(.87)', opacity: .35 },
