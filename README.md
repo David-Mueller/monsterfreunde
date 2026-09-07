@@ -1,0 +1,59 @@
+# Monsterfreunde
+
+Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln, hüpfen und tanzen lassen.
+
+## Aktueller Stand
+
+- Zwei eigene Monster mit jeweils acht gezeichneten Posen.
+- Berechnete Zwischenposen mit WebGL und einer Darstellung ohne WebGL als Rückfalloption.
+- Blinzeln, Atmen, Begrüßung, Kitzeln, Hüpfen und Tanzen.
+- Federnde Körperbewegung und zum Sprung passender Schatten.
+- Auswahl per Touch, Wischen oder Tastatur.
+- Berücksichtigung reduzierter Bewegung und Pause bei ausgeblendetem Tab.
+
+Die App benötigt weder einen Build-Schritt noch einen eigenen Backend-Server. Neue Spielaktionen und Sounds sind noch nicht implementiert; die Ideen stehen in [IDEEN.md](IDEEN.md).
+
+## Lokal starten
+
+```sh
+python3 -m http.server 8000 --directory dist
+```
+
+Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App ihre Animationsdaten nachlädt; `index.html` nicht direkt als lokale Datei öffnen.
+
+## Dateien
+
+| Pfad | Inhalt |
+| --- | --- |
+| `dist/index.html` | Oberfläche und Bedienelemente |
+| `dist/styles.css` | Gestaltung und responsive Größen |
+| `dist/app.js` | Auswahl, Aktionen und Animationssteuerung |
+| `dist/monster-motion.js` | Pose-Interpolation, WebGL und Bewegungsmodelle |
+| `dist/assets/` | Monsterzeichnungen und Animations-Landmarken |
+| `scripts/prepare-motion.py` | Leitet Landmarken aus den vorhandenen Zeichnungen ab |
+| `asset-prompts.json` | Entstehungsbeschreibungen der Grafiken |
+| `IDEEN.md` | Ideen und vorgeschlagene nächste Ausbauschritte |
+| `.github/workflows/pages.yml` | Veröffentlichung von `dist/` über GitHub Pages |
+
+Die vorbereiteten Animationsdaten sind eingecheckt. Nur wenn sie neu erzeugt werden sollen:
+
+```sh
+python3 -m pip install numpy scipy pillow
+python3 scripts/prepare-motion.py
+```
+
+## GitHub Pages
+
+Einmalig im Repository unter **Settings → Pages → Build and deployment → Source** die Option **GitHub Actions** auswählen. Danach veröffentlicht der Workflow jeden Push auf `master`. Er lässt sich auch über **Actions → Deploy GitHub Pages → Run workflow** starten.
+
+Der Workflow lädt ausschließlich `dist/` als Website hoch. Die App verwendet relative Dateipfade und kann dadurch unter dem Repository-Unterpfad laufen.
+
+Erwartete Adresse nach erfolgreicher Veröffentlichung: <https://david-mueller.github.io/monsterfreunde/>. Diese Adresse ist erst nach einem erfolgreichen Pages-Deployment verfügbar.
+
+Die einmalige Aktivierung von Pages erfolgt in den Repository-Einstellungen. Der Workflow benötigt dafür keinen persönlichen Token und versucht nicht, Pages selbst einzuschalten.
+
+Referenz: [GitHub-Dokumentation zu eigenen Pages-Workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+
+## Bisherige Prüfung
+
+JavaScript-Syntax, lokale Dateiverweise und die Bewegungslogik wurden geprüft, einschließlich schneller Aktionswechsel, Pause im Hintergrund und reduzierter Bewegung. Die tatsächliche Darstellung und Leistung auf einem echten Android-Telefon müssen noch geprüft werden.
