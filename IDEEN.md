@@ -79,5 +79,5 @@ Das visuelle Kitzeln ist bereits vorhanden und hat jetzt hörbares Lachen.
 - Gute Reaktionen, verständliche Touch-Bedienung und flüssige Animationen stehen im Vordergrund.
 - Nach jeder größeren Änderung auf einem echten Android-Telefon ausprobieren.
 - Neue Grafik- und Audiodateien mit dem Projekt versionieren.
-- Ohne Verbindung zu externen Diensten soll das vorhandene Spiel weiterhin funktionieren.
+- Ohne Verbindung zu externen Diensten soll das vorhandene Spiel weiterhin funktionieren. Seit dem Service Worker läuft die App auch ganz ohne Netz.
 - Den aktuellen Fokus vor jeder Iteration festlegen; diese Liste ist ein Vorrat an Ideen.

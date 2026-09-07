@@ -10,6 +10,7 @@ Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln,
 - Federnde Körperbewegung und zum Sprung passender Schatten.
 - Auswahl per Touch, Wischen oder Tastatur.
 - Berücksichtigung reduzierter Bewegung und Pause bei ausgeblendetem Tab.
+- Installierbar als App und offline nutzbar: Manifest, Icon und ein Service Worker, der alle Dateien beim ersten Besuch speichert und bei jedem Deploy erneuert.
 - Synthetische Sounds ohne Audiodateien: Kichern, Boing, Plumps, Tanzschläge und Begrüßung, mit eigener Stimmlage pro Monster und Ton-Schalter.
 
 Die App benötigt weder einen Build-Schritt noch einen eigenen Backend-Server. Weitere Ideen stehen in [IDEEN.md](IDEEN.md).
@@ -30,6 +31,7 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `dist/styles.css` | Gestaltung und responsive Größen |
 | `dist/app.js` | Auswahl, Aktionen und Animationssteuerung |
 | `dist/sounds.js` | Synthetische Sounds und Ton-Schalter |
+| `dist/sw.js`, `dist/manifest.webmanifest` | Offline-Kopie und App-Installation |
 | `dist/monster-motion.js` | Zwischenbild-Berechnung, WebGL und Bewegungsmodelle |
 | `dist/assets/` | Monsterzeichnungen und Animations-Landmarken |
 | `dist/rig.html`, `dist/rig.js`, `dist/rig-app.js` | Prototyp des Baukasten-Rigs aus ANIMATION.md, erreichbar unter `/rig.html` |
@@ -57,7 +59,7 @@ Unter `/rig.html` läuft dieselbe Spielfläche mit dem Baukasten-Rig aus [ANIMAT
 
 Einmalig im Repository unter **Settings → Pages → Build and deployment → Source** die Option **GitHub Actions** auswählen. Danach veröffentlicht der Workflow jeden Push auf `master`. Er lässt sich auch über **Actions → Deploy GitHub Pages → Run workflow** starten.
 
-Der Workflow stempelt vor dem Hochladen Commit-Kürzel und Datum in `index.html`. Der Stempel steht unten rechts in der App und hängt als Cache-Parameter an Skripten und Bewegungsdaten, sodass ein Telefon nie alte und neue Dateien mischt. Lokal steht dort „lokal“.
+Der Workflow stempelt vor dem Hochladen Commit-Kürzel und Datum in `index.html`, `rig.html` und `sw.js`. Der Stempel steht unten rechts in der App und hängt als Cache-Parameter an Skripten und Bewegungsdaten, sodass ein Telefon nie alte und neue Dateien mischt. Lokal steht dort „lokal“.
 
 Der Workflow lädt ausschließlich `dist/` als Website hoch. Die App verwendet relative Dateipfade und kann dadurch unter dem Repository-Unterpfad laufen.
 

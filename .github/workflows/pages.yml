@@ -33,7 +33,7 @@ jobs:
       - name: Stamp version into the page
         run: |
           stamp="${GITHUB_SHA::7} · $(date -u +%d.%m.%Y)"
-          sed -i "s|__VERSION__|${stamp}|g" dist/index.html dist/rig.html
+          sed -i "s|__VERSION__|${stamp}|g" dist/index.html dist/rig.html dist/sw.js
           grep -q "data-version=\"${stamp}\"" dist/index.html
 
       - name: Check static application
@@ -42,6 +42,9 @@ jobs:
           node --check dist/monster-motion.js
           node --check dist/rig.js
           node --check dist/sounds.js
+          node --check dist/sw.js
+          test -s dist/manifest.webmanifest
+          test -s dist/assets/icon-512.png
           node --check dist/rig-app.js
           test -s dist/assets/rig.json
           test -s dist/index.html

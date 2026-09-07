@@ -145,6 +145,12 @@ document.addEventListener('visibilitychange', () => {
 });
 $('#version').textContent = version;
 Sounds.bindToggle($('#sound'));
+// Offline copy of the app; the registration URL carries the version so a new
+// deployment always installs a fresh worker.
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register(`sw.js?v=${encodeURIComponent(version)}`, { updateViaCache: 'none' }).catch(() => {}));
+}
+
 
 fetch(`assets/rig.json?v=${encodeURIComponent(version)}`).then(response => {
   if (!response.ok) throw new Error('Missing rig data');
