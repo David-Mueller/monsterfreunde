@@ -81,7 +81,12 @@ class MonsterRenderer {
       void main() {
         vec4 a = samplePose(uFrom,vFrom,uFromRect);
         vec4 b = samplePose(uTo,vTo,uToRect);
-        gl_FragColor = mix(a,b,uMix);
+        // Keep the drawing crisp: the mesh still moves continuously between
+        // both poses, but only one complete illustration is visible at a
+        // time. Alpha-blending the two characters produced double eyes,
+        // mouths and limbs on real devices.
+        float visiblePose = step(0.5, uMix);
+        gl_FragColor = mix(a, b, visiblePose);
       }
     `);
     this.program = gl.createProgram();
