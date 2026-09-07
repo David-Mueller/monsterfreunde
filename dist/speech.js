@@ -2,14 +2,17 @@
 
 // Sprachsteuerung ("Agentic Speech") für Monsterfreunde.
 //
-// Push-to-Talk: Der große Mikrofon-Knopf wird gedrückt gehalten, solange das
-// Kind spricht. Es gibt KEINE Daueraufnahme — das Mikrofon ist nur aktiv,
-// während der Knopf gedrückt ist (Track enable/disable).
+// Start/Stop-Toggle: Ein Tipp auf den Mikrofon-Knopf startet ein Gespräch, ein
+// weiterer beendet es. Während des Gesprächs bleibt das Mikrofon offen und die
+// Realtime API erkennt selbst, wann das Kind spricht (semantic_vad). Die Kinder
+// reden einfach drauflos und dürfen das Monster jederzeit unterbrechen
+// (Barge-in) — Vollduplex. Es gibt keine Aufnahme über die Session hinaus:
+// beim Beenden wird der Mikrofon-Track sauber gestoppt.
 //
-// Ablauf: Knopf gedrückt -> einmalig POST /api/session (gleiche Origin, liefert
-// nur einen kurzlebigen Ephemeral Token) -> WebRTC-Verbindung direkt zur
-// OpenAI Realtime API -> Antwort-Audio abspielen. Function-Calls des Modells
-// werden auf die Monster-Aktionen der App gemappt (strikte Whitelist).
+// Ablauf: Start -> POST /api/session (gleiche Origin, liefert nur einen
+// kurzlebigen Ephemeral Token) -> WebRTC-Verbindung direkt zur OpenAI Realtime
+// API -> Antwort-Audio abspielen. Function-Calls des Modells werden auf die
+// Monster-Aktionen der App gemappt (strikte Whitelist, kein eval).
 //
 // Alles ist defensiv: Fehlt der Browser-Support, das Mikrofon oder der Server,
 // bleibt die App voll nutzbar; der Knopf zeigt dann ein Schlaf-Emoji.
@@ -27,7 +30,6 @@
   button.hidden = false;
 
   const CALLS_URL = 'https://api.openai.com/v1/realtime/calls';
-  const IDLE_TEARDOWN_MS = 45000; // Verbindung nach Ruhe schließen (spart Kosten)
 
   // Function-Call-Whitelist: das Modell darf ausschließlich diese Aktionen
   // auslösen. Unbekannte Namen werden ignoriert. Kein eval, keine dynamische
@@ -45,53 +47,65 @@
   let pc = null;
   let dc = null;
   let micStream = null;
-  let micTrack = null;
   let audioEl = null;
-  let setup = null;            // Promise während des Verbindungsaufbaus
-  let sessionMonster = null;   // Monster, für das die aktive Session gilt
-  let holding = false;
-  let idleTimer = 0;
+  let starting = null;         // Promise während des Verbindungsaufbaus
+  let active = false;          // läuft gerade eine Session?
+  let sessionMonster = null;   // Monster, für das die Session gilt
   let maxTimer = 0;
+  let childSpeaking = false;
+  let monsterSpeaking = false;
   const handledCalls = new Set();
 
-  function setState(state) {
-    button.classList.toggle('busy', state === 'connecting');
-    button.classList.toggle('on', state === 'listening');
-    button.classList.toggle('asleep', state === 'asleep');
+  // --- Anzeige ---
+  function paint() {
+    const connecting = !!starting && !active;
+    button.classList.toggle('busy', connecting);
+    button.classList.toggle('active', active);
+    button.classList.toggle('on', active && childSpeaking);
+    button.classList.toggle('speaking', active && monsterSpeaking);
+    if (active) { setGlyph('😴'); button.setAttribute('aria-label', 'Gespräch beenden'); button.classList.remove('asleep'); }
+    else if (connecting) { setGlyph('🎤'); button.setAttribute('aria-label', 'Verbinde…'); }
   }
 
-  function sleep(message) {
-    setState('asleep');
-    if (glyph) glyph.textContent = '😴';
+  function setGlyph(g) { if (glyph) glyph.textContent = g; }
+
+  function idleLook() {
+    button.classList.remove('busy', 'active', 'on', 'speaking', 'asleep');
+    setGlyph('🎤');
+    button.setAttribute('aria-label', 'Gespräch starten');
+  }
+
+  function sleepLook(message) {
+    button.classList.remove('busy', 'active', 'on', 'speaking');
+    button.classList.add('asleep');
+    setGlyph('😴');
+    button.setAttribute('aria-label', 'Nochmal versuchen');
     if (message) app.say(message);
   }
 
-  function wake() {
-    if (glyph) glyph.textContent = '🎤';
-    button.classList.remove('asleep');
-  }
-
-  function armIdleTimer() {
-    clearTimeout(idleTimer);
-    idleTimer = window.setTimeout(() => { if (!holding) teardown(); }, IDLE_TEARDOWN_MS);
-  }
-
+  // --- Verbindung abbauen ---
   function teardown() {
-    clearTimeout(idleTimer);
     clearTimeout(maxTimer);
     handledCalls.clear();
-    try { micTrack && (micTrack.enabled = false); } catch { /* egal */ }
+    childSpeaking = monsterSpeaking = false;
     try { micStream && micStream.getTracks().forEach(t => t.stop()); } catch { /* egal */ }
     try { dc && dc.close(); } catch { /* egal */ }
     try { pc && pc.close(); } catch { /* egal */ }
     if (audioEl) { try { audioEl.srcObject = null; } catch { /* egal */ } }
-    pc = dc = micStream = micTrack = null;
-    setup = null;
+    pc = dc = micStream = null;
+    starting = null;
+    active = false;
     sessionMonster = null;
-    setState('idle');
-    wake();
   }
 
+  function stop() {
+    const wasActive = active || !!starting;
+    teardown();
+    idleLook();
+    return wasActive;
+  }
+
+  // --- Datenkanal ---
   function sendEvent(obj) {
     if (dc && dc.readyState === 'open') dc.send(JSON.stringify(obj));
   }
@@ -113,16 +127,34 @@
   function onMessage(event) {
     let msg;
     try { msg = JSON.parse(event.data); } catch { return; }
-    if (msg.type === 'response.output_item.done' && msg.item && msg.item.type === 'function_call') {
-      handleFunctionCall(msg.item);
-    } else if (msg.type === 'response.done' && msg.response && Array.isArray(msg.response.output)) {
-      for (const item of msg.response.output) if (item.type === 'function_call') handleFunctionCall(item);
+    switch (msg.type) {
+      // Kind spricht (VAD) — auch Barge-in: Monster gilt als unterbrochen.
+      case 'input_audio_buffer.speech_started':
+        childSpeaking = true; monsterSpeaking = false; paint(); break;
+      case 'input_audio_buffer.speech_stopped':
+        childSpeaking = false; paint(); break;
+      // Monster spricht.
+      case 'response.created':
+      case 'response.output_audio.delta':
+        monsterSpeaking = true; paint(); break;
+      case 'output_audio_buffer.stopped':
+      case 'response.done':
+        monsterSpeaking = false; paint();
+        if (msg.type === 'response.done' && msg.response && Array.isArray(msg.response.output)) {
+          for (const item of msg.response.output) if (item.type === 'function_call') handleFunctionCall(item);
+        }
+        break;
+      case 'response.output_item.done':
+        if (msg.item && msg.item.type === 'function_call') handleFunctionCall(msg.item);
+        break;
+      default:
+        break;
     }
   }
 
+  // --- Verbindung aufbauen ---
   async function connect() {
     const monster = app.monster;
-    setState('connecting');
 
     // 1) Ephemeral Token vom eigenen Proxy holen (gleiche Origin).
     const res = await fetch('/api/session', {
@@ -143,18 +175,20 @@
 
     // 2) WebRTC aufsetzen.
     pc = new RTCPeerConnection();
-
     audioEl = audioEl || Object.assign(new Audio(), { autoplay: true });
     pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
+    pc.addEventListener('connectionstatechange', () => {
+      if (['failed', 'disconnected', 'closed'].includes(pc.connectionState) && active) {
+        sleepAfterDrop();
+      }
+    });
 
     dc = pc.createDataChannel('oai-events');
     dc.addEventListener('message', onMessage);
 
-    // Mikrofon — Track startet deaktiviert (nur aktiv, wenn Knopf gedrückt).
+    // Mikrofon offen für die ganze Session (VAD steuert die Sprechpausen).
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    micTrack = micStream.getAudioTracks()[0];
-    micTrack.enabled = false;
-    pc.addTrack(micTrack, micStream);
+    pc.addTrack(micStream.getAudioTracks()[0], micStream);
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -169,61 +203,43 @@
 
     // Session hart begrenzen (Tagesbudget-Reservierung des Servers einhalten).
     if (data.session_seconds) {
-      maxTimer = window.setTimeout(() => teardown(), data.session_seconds * 1000);
+      maxTimer = window.setTimeout(() => { teardown(); idleLook(); app.say('Kleines Päuschen! Tipp wieder auf 🎤.'); }, data.session_seconds * 1000);
     }
   }
 
-  // Baut die Verbindung auf (memoisiert) und passt sie an, falls das Kind
-  // inzwischen ein anderes Monster gewählt hat (andere Persona/Stimme).
-  function ensureConnection() {
-    if (pc && sessionMonster && sessionMonster !== app.monster) teardown();
-    if (!setup) {
-      setup = connect().catch((error) => {
-        teardown();
-        const name = app.monsters && app.monster ? capitalize(app.monster) : 'Das Monster';
-        sleep(error && error.friendly ? error.friendly : `${name} hört gerade nichts.`);
-        throw error;
-      });
-    }
-    return setup;
+  function sleepAfterDrop() {
+    const name = capitalize(app.monster || '');
+    teardown();
+    sleepLook(`${name || 'Das Monster'} muss kurz weg. Nochmal tippen!`);
   }
 
-  function capitalize(key) { return key.charAt(0).toUpperCase() + key.slice(1); }
+  function capitalize(key) { return key ? key.charAt(0).toUpperCase() + key.slice(1) : ''; }
 
-  async function press() {
-    if (holding) return;
-    holding = true;
-    wake();
-    clearTimeout(idleTimer);
-    try {
-      await ensureConnection();
-      // Nur senden, wenn der Knopf noch gehalten wird.
-      if (holding && micTrack) { micTrack.enabled = true; setState('listening'); }
-    } catch { /* sleep() hat bereits Feedback gegeben */ }
+  async function start() {
+    if (active || starting) return;
+    button.classList.remove('asleep');
+    starting = connect().then(() => {
+      active = true;
+      starting = null;
+      paint();
+    }).catch((error) => {
+      teardown();
+      const name = capitalize(app.monster || '');
+      sleepLook(error && error.friendly ? error.friendly : `${name || 'Das Monster'} hört gerade nichts.`);
+    });
+    paint();
+    return starting;
   }
 
-  function release() {
-    if (!holding) return;
-    holding = false;
-    if (micTrack) micTrack.enabled = false;
-    if (pc) { setState('idle'); armIdleTimer(); }
-  }
-
-  // Push-to-Talk-Events. Pointer deckt Touch, Maus und Stift ab.
-  button.addEventListener('pointerdown', (e) => {
-    if (!e.isPrimary) return;
-    e.preventDefault();
-    try { button.setPointerCapture(e.pointerId); } catch { /* egal */ }
-    press();
+  // --- Toggle: ein Tipp startet, der nächste beendet ---
+  button.addEventListener('click', () => {
+    if (active || starting) stop();
+    else start();
   });
-  const end = (e) => { if (e && e.pointerId != null) { try { button.releasePointerCapture(e.pointerId); } catch { /* egal */ } } release(); };
-  button.addEventListener('pointerup', end);
-  button.addEventListener('pointercancel', end);
-  button.addEventListener('pointerleave', () => { if (holding) release(); });
-  // Kontextmenü bei langem Drücken auf Touch unterdrücken.
-  button.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // Beim Verlassen/Ausblenden der Seite alles sauber schließen.
-  window.addEventListener('pagehide', teardown);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) teardown(); });
+  window.addEventListener('pagehide', () => { teardown(); idleLook(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { teardown(); idleLook(); } });
+
+  idleLook();
 })();

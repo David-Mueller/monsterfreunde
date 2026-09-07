@@ -99,10 +99,16 @@ h2{font-size:29px;line-height:1.2;letter-spacing:-.045em;font-weight:850;margin:
 .mic:active{transform:scale(.94)}
 .mic.busy{background:#ffffff26;color:#fff9ff}
 .mic.busy .mic-ring{opacity:.7;animation:mic-pulse 1.1s ease-out infinite}
-.mic.on{background:#ff5da2;color:#fff}
-.mic.on .mic-ring{opacity:1;border-color:#ff5da2;animation:mic-pulse .9s ease-out infinite}
+/* Aktive Session: dezenter Dauer-Ring, damit klar ist, dass zugehört wird. */
+.mic.active{background:#ff5da2;color:#fff}
+.mic.active .mic-ring{opacity:.5;border-color:#ff9ecb;animation:mic-breathe 2s ease-in-out infinite}
+/* Kind spricht (VAD erkennt Stimme): kräftig pulsierender Ring. */
+.mic.on .mic-ring{opacity:1;border-color:#ffd93d;animation:mic-pulse .9s ease-out infinite}
+/* Monster spricht: ruhiger, andersfarbiger Puls. */
+.mic.speaking .mic-ring{opacity:1;border-color:#7ff0d0;animation:mic-pulse 1.3s ease-out infinite}
 .mic.asleep{background:#ffffff14;color:#fff9ff87;box-shadow:none}
-@keyframes mic-pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.55);opacity:0}}
+@keyframes mic-pulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.55);opacity:0}}
+@keyframes mic-breathe{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.12);opacity:.6}}
 @media(max-height:640px){.mic{width:62px;height:62px}.mic-glyph{font-size:29px}}
 @keyframes particle{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}15%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--spin)) scale(1);opacity:0}}
 @media(min-width:700px){.app{padding-top:34px;padding-bottom:26px}.ambient i{width:800px;height:800px;left:calc(50% - 400px);top:calc(42% - 400px)}.ambient i:nth-child(2){width:1100px;height:1100px;left:calc(50% - 550px);top:calc(42% - 550px)}.ambient i:nth-child(3){width:1450px;height:1450px;left:calc(50% - 725px);top:calc(42% - 725px)}.playground{max-width:470px}.arrow{width:46px;height:46px}.monster-area{width:min(100%,390px)}}

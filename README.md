@@ -29,13 +29,14 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 
 ## Sprachsteuerung (Agentic Speech)
 
-Optionales Zusatzfeature: Das Kind hält den großen Mikrofon-Knopf gedrückt und spricht mit dem gewählten Monster (Momo, Pip, Lumi oder Zing). Das Monster antwortet mit Stimme und führt Aktionen aus — hüpfen, tanzen, kitzeln, füttern, sein Kunststück, ein Gefühl zeigen, winken. Die App bleibt ohne dieses Feature vollständig nutzbar; `speech.js` lädt defensiv und blendet den Knopf aus, wenn Browser-Support, Mikrofon oder Server fehlen (dann zeigt der Knopf ein Schlaf-Emoji).
+Optionales Zusatzfeature: Ein Tipp auf den großen Mikrofon-Knopf startet ein Gespräch mit dem gewählten Monster (Momo, Pip, Lumi oder Zing), ein weiterer Tipp beendet es. Während des Gesprächs reden die Kinder einfach drauflos — die Realtime API erkennt selbst, wann gesprochen wird (semantic VAD), und die Kinder dürfen das Monster jederzeit unterbrechen (Barge-in, Vollduplex). Das Monster antwortet mit Stimme und führt Aktionen aus — hüpfen, tanzen, kitzeln, füttern, sein Kunststück, ein Gefühl zeigen, winken. Die App bleibt ohne dieses Feature vollständig nutzbar; `speech.js` lädt defensiv und blendet den Knopf aus, wenn Browser-Support, Mikrofon oder Server fehlen (dann zeigt der Knopf ein Schlaf-Emoji).
 
 ### Architektur
 
 - **Kein API-Key im Browser.** `scripts/speech-proxy.mjs` ist ein winziger Node-Server (nur Builtins, Node ≥ 22), der den echten OpenAI-API-Key nur im Serverprozess hält. Der Browser bekommt über `POST /api/session` ausschließlich einen kurzlebigen Ephemeral Token.
 - **Persona server-seitig gepinnt.** Modell (`gpt-realtime-2.1-mini`), kindgerechte deutsche Monster-Persona, passende Stimme und die Werkzeug-Whitelist werden beim Erzeugen des Tokens fest in die Session geschrieben. Der Client kann daran nichts ändern.
-- **Direkte WebRTC-Verbindung.** Mit dem Ephemeral Token verbindet sich der Browser per WebRTC direkt zur OpenAI Realtime API. Push-to-Talk: das Mikrofon ist nur aktiv, solange der Knopf gedrückt ist (keine Daueraufnahme).
+- **Direkte WebRTC-Verbindung.** Mit dem Ephemeral Token verbindet sich der Browser per WebRTC direkt zur OpenAI Realtime API. Während einer laufenden Session ist das Mikrofon offen; die Turn-Detection der API (`semantic_vad` mit `interrupt_response`) übernimmt Sprech-Erkennung und Barge-in. Ausserhalb einer Session ist das Mikrofon vollständig gestoppt (keine Hintergrundaufnahme). Der Ring pulsiert, wenn das Monster zuhört (gelb) bzw. spricht (türkis).
+- **Witzige Stimmen pro Monster.** Jedes Monster hat eine eigene Realtime-Voice und eine Persona, die die Sprechweise vorgibt: Momo tief-brummig (`cedar`), Pip quirlig mit Kicheranfällen (`verse`), Lumi verträumt-flüsterig (`shimmer`), Zing hibbelig-gummiartig mit Quietsch-Lauten (`ash`).
 - **Werkzeuge statt Freitext.** Das Modell darf ausschließlich die definierten Funktionen aufrufen (`huepfen`, `tanzen`, `besonderer_move`, `kitzeln`, `fuettern`, `ausdruck`, `begruessen`). `speech.js` mappt sie auf die App-Aktionen über `window.MonsterApp`. Kein `eval`, keine dynamische Ausführung von Modell-Text.
 - **Tageslimit.** Pro Tag stehen 30 Minuten zur Verfügung (Zähler in `~/.claude/state/monster-speech-usage.json`, je Session 5 Minuten reserviert). Bei Überschreitung liefert der Proxy `429`, der Client zeigt „Die Monster schlafen schon".
 
@@ -49,8 +50,8 @@ Der Proxy lädt den Key selbst via `claude-control-op` aus 1Password (Vault Claw
 
 ### Grenzen
 
-- Nur Push-to-Talk, keine Hintergrundaufnahme.
-- Wechselt das Kind mitten in einer Sitzung das Monster, baut der Client die Verbindung mit passender Persona/Stimme neu auf.
+- Das Mikrofon ist nur während einer aktiven Session offen; ausserhalb wird der Track gestoppt (keine Hintergrundaufnahme).
+- Die Stimme/Persona einer Session gehört zum Monster, das beim Start gewählt war. Wer mitten im Gespräch das Monster wechselt, beendet die Session und startet für das neue Monster neu.
 - Der Proxy ist lokal und wird nicht mit `dist/` deployt; er läuft auf David's Mac (z. B. in einer tmux-Session).
 
 ## Dateien
@@ -60,7 +61,7 @@ Der Proxy lädt den Key selbst via `claude-control-op` aus 1Password (Vault Claw
 | `dist/index.html` | Oberfläche und Bedienelemente |
 | `dist/styles.css` | Gestaltung und responsive Größen |
 | `dist/app.js` | Auswahl, Aktionen und Animationssteuerung; stellt `window.MonsterApp` bereit |
-| `dist/speech.js` | Optionale Sprachsteuerung (Push-to-Talk, WebRTC zur OpenAI Realtime API) |
+| `dist/speech.js` | Optionale Sprachsteuerung (Start/Stop-Toggle, VAD, WebRTC zur OpenAI Realtime API) |
 | `scripts/speech-proxy.mjs` | Mint-Server: erzeugt Ephemeral Tokens, pinnt Persona/Werkzeuge, Tageslimit |
 | `scripts/start-speech-proxy.sh` | Startet den Sprach-Proxy (Key via 1Password), für tmux |
 | `dist/sounds.js` | Synthetische Sounds und Ton-Schalter |
