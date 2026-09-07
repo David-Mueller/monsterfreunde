@@ -30,18 +30,26 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `dist/app.js` | Auswahl, Aktionen und Animationssteuerung |
 | `dist/monster-motion.js` | Zwischenbild-Berechnung, WebGL und Bewegungsmodelle |
 | `dist/assets/` | Monsterzeichnungen und Animations-Landmarken |
+| `dist/rig.html`, `dist/rig.js`, `dist/rig-app.js` | Prototyp des Baukasten-Rigs aus ANIMATION.md, erreichbar unter `/rig.html` |
+| `dist/assets/parts/`, `dist/assets/rig.json` | Provisorische Teile und Rig-Daten, aus den Posen geschnitten |
+| `scripts/extract-parts.py` | Schneidet Körper, Augen, Münder und Arme aus den vorhandenen Posen |
 | `scripts/prepare-motion.py` | Leitet Griffpunkte und Zentrierung aus den vorhandenen Zeichnungen ab |
 | `asset-prompts.json` | Entstehungsbeschreibungen der Grafiken |
 | `IDEEN.md` | Ideen und vorgeschlagene nächste Ausbauschritte |
 | `ANIMATION.md` | Konzept für ein Baukasten-Rig als nächste Animationsgrundlage |
 | `.github/workflows/pages.yml` | Veröffentlichung von `dist/` über GitHub Pages |
 
-Die vorbereiteten Animationsdaten sind eingecheckt. Nur wenn sie neu erzeugt werden sollen:
+Die vorbereiteten Animationsdaten und Rig-Teile sind eingecheckt. Nur wenn sie neu erzeugt werden sollen:
 
 ```sh
 python3 -m pip install numpy scipy pillow
 python3 scripts/prepare-motion.py
+python3 scripts/extract-parts.py
 ```
+
+## Rig-Prototyp
+
+Unter `/rig.html` läuft dieselbe Spielfläche mit dem Baukasten-Rig aus [ANIMATION.md](ANIMATION.md): Körper, Augen, Münder und Arme sind einzelne Teile, die per CSS-Transform bewegt werden. Pupillen und Lider werden im Code gezeichnet. Die Teile stammen vorerst aus den vorhandenen Posen und werden durch eigens erzeugte Teile-Sheets ersetzt.
 
 ## GitHub Pages
 
