@@ -5,7 +5,7 @@ Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln,
 ## Aktueller Stand
 
 - Zwei eigene Monster mit jeweils acht gezeichneten Posen.
-- Berechnete Zwischenbilder mit WebGL: Hände, Füße, Augen und Mund dienen als Griffpunkte, um die herum die Zeichnung möglichst starr gedreht und verschoben wird. Es ist immer nur eine vollständige Zeichnung sichtbar, nie ein Mischbild. Ohne WebGL wechseln die Posen als Schnitte.
+- Kein Morphen: Es ist immer genau eine der gezeichneten Posen zu sehen, jede exakt zentriert. Posen wechseln als Schnitte, jede Aktion beginnt bei der gerade sichtbaren Pose und endet in der Neutralpose. Ein kleiner Federstoß bei jedem Wechsel lässt den Schnitt wie einen Schritt wirken.
 - Blinzeln, Atmen, Begrüßung, Kitzeln, Hüpfen und Tanzen.
 - Federnde Körperbewegung und zum Sprung passender Schatten.
 - Auswahl per Touch, Wischen oder Tastatur.
@@ -32,12 +32,12 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `dist/app.js` | Auswahl, Aktionen und Animationssteuerung |
 | `dist/sounds.js` | Synthetische Sounds und Ton-Schalter |
 | `dist/sw.js`, `dist/manifest.webmanifest` | Offline-Kopie und App-Installation |
-| `dist/monster-motion.js` | Zwischenbild-Berechnung, WebGL und Bewegungsmodelle |
+| `dist/monster-motion.js` | Posenwechsel per Canvas, Clips und Bewegungsmodelle |
 | `dist/assets/` | Monsterzeichnungen und Animations-Landmarken |
 | `dist/rig.html`, `dist/rig.js`, `dist/rig-app.js` | Prototyp des Baukasten-Rigs aus ANIMATION.md, erreichbar unter `/rig.html` |
 | `dist/assets/parts/`, `dist/assets/rig.json` | Provisorische Teile und Rig-Daten, aus den Posen geschnitten |
 | `scripts/extract-parts.py` | Schneidet Körper, Augen, Münder und Arme aus den vorhandenen Posen |
-| `scripts/prepare-motion.py` | Leitet Griffpunkte und Zentrierung aus den vorhandenen Zeichnungen ab |
+| `scripts/prepare-motion.py` | Leitet Zentrierung und Landmarken aus den vorhandenen Zeichnungen ab; die Hauptseite nutzt nur die Zentrierung |
 | `asset-prompts.json` | Entstehungsbeschreibungen der Grafiken |
 | `IDEEN.md` | Ideen und vorgeschlagene nächste Ausbauschritte |
 | `ANIMATION.md` | Konzept für ein Baukasten-Rig als nächste Animationsgrundlage |

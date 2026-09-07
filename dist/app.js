@@ -67,11 +67,10 @@ function idle() {
 
 function startClip(name) {
   if (!ready) return;
-  const initial = renderer.capture();
   clearAction();
   const clip = MonsterMotion.clips[name];
-  currentClip = { name, clip, initial, start: performance.now(), speed: monster().tempo, duration: clip.duration, fired: 0 };
-  renderer.draw(initial, initial, 0, performance.now() / 1000, 0);
+  // A clip starts from the drawing on screen and always ends in pose 0.
+  currentClip = { name, clip, initial: renderer.frame, start: performance.now(), speed: monster().tempo, duration: clip.duration, fired: 0 };
   scheduleFrame();
 }
 
@@ -89,7 +88,7 @@ function animate(now) {
   const dt = Math.min(.05, previousTime ? (now - previousTime) / 1000 : 1 / 60);
   previousTime = now;
   if (!currentClip && !reduced.matches && now >= nextBlink) startClip('blink');
-  let a = renderer.pose(0), b = a, mix = 0;
+  let frame = 0;
   let target = MonsterMotion.body(null, 0, 0, now / 1000, monster().tempo);
   if (currentClip) {
     const running = currentClip;
@@ -100,17 +99,16 @@ function animate(now) {
       speech.classList.remove('visible');
       scheduleBlink(now);
     } else if (reduced.matches) {
-      a = b = renderer.pose(elapsed > .7 ? 0 : running.clip.still);
+      frame = elapsed > .7 ? 0 : running.clip.still;
     } else {
-      const segment = MonsterMotion.segment(running.clip, elapsed);
-      a = segment.first ? running.initial : renderer.pose(segment.from);
-      b = renderer.pose(segment.to);
-      mix = segment.mix;
+      frame = MonsterMotion.poseAt(running.clip, elapsed, running.initial);
       target = MonsterMotion.body(running.name, elapsed, running.duration, now / 1000, monster().tempo);
       while (running.fired < running.clip.moments.length && elapsed >= running.clip.moments[running.fired].at) moment(running.clip.moments[running.fired++].kind);
     }
   }
-  if (reduced.matches) target = { x: 0, y: 0, r: 0, sx: 1, sy: 1, height: 0, life: 0 };
+  if (reduced.matches) target = { x: 0, y: 0, r: 0, sx: 1, sy: 1, height: 0 };
+  // A tiny bounce on every pose change reads as a step and hides the cut.
+  if (frame !== renderer.frame && !reduced.matches && frame !== 1 && renderer.frame !== 1) { springs.sy.kick(-1.6); springs.sx.kick(1.1); }
   const motion = {};
   for (const key of Object.keys(springs)) motion[key] = springs[key].step(target[key], dt, key === 'height' ? 38 : 24);
   const scale = Math.min(1, sprite.clientWidth / 360);
@@ -118,7 +116,7 @@ function animate(now) {
   const altitude = MonsterMotion.clamp(motion.height / 110);
   ground.style.transform = `scale(${1 - altitude * .45},${1 - altitude * .25})`;
   ground.style.opacity = String(1 - altitude * .65);
-  renderer.draw(a, b, mix, now / 1000, reduced.matches ? 0 : target.life);
+  renderer.show(frame);
   if (!reduced.matches || currentClip) scheduleFrame();
 }
 
@@ -262,7 +260,6 @@ Promise.all([
   fetch(`assets/motion.json?v=${encodeURIComponent(version)}`).then(response => { if (!response.ok) throw new Error('Missing motion data'); return response.json(); })
 ]).then(results => {
   renderer = new MonsterRenderer(sprite, results[results.length - 1]);
-  renderer.onRestore = () => { clearAction(); idle(); };
   ready = true;
   document.body.classList.add('ready');
   touch.disabled = false;

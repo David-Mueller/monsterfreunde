@@ -4,7 +4,7 @@ Stand: 7. September 2026. Dieses Dokument beschreibt, warum das heutige Morphen 
 
 ## Ausgangslage
 
-Heute gibt es pro Monster acht vollständige Zeichnungen. Zwischenbilder werden berechnet, indem die Zeichnung um Griffpunkte herum verformt wird, und an einem Punkt wird auf die nächste Zeichnung geschnitten. Das ist nach mehreren Verbesserungen brauchbar, aber es bleiben drei Probleme, die sich mit dieser Technik nicht lösen lassen:
+Heute gibt es pro Monster acht vollständige Zeichnungen. Die Hauptseite schneidet zwischen ihnen hart um; ein Versuch, Zwischenbilder durch Verformung zu berechnen, wurde nach Tests auf dem Telefon wieder entfernt, weil Gesichter und Hände Artefakte zeigten. Drei Probleme lassen sich mit ganzen Zeichnungen nicht lösen:
 
 - Die Zeichnungen sind untereinander nicht konsistent. Momos hängender Arm ist ein kurzer Stummel, der erhobene Arm ist dreimal so lang. Kein Verfahren kann das ohne Stauchen oder Strecken überbrücken.
 - Jeder Schnitt zwischen zwei Zeichnungen ist sichtbar, weil Haare, Hände und Körperkontur anders gezeichnet sind.
