@@ -32,7 +32,7 @@ jobs:
 
       - name: Stamp version into the page
         run: |
-          stamp="${GITHUB_SHA::7} · $(date -u +%d.%m.%Y)"
+          stamp="${GITHUB_SHA::7} · $(TZ=Europe/Berlin date +%d.%m.%Y' '%H:%M)"
           sed -i "s|__VERSION__|${stamp}|g" dist/index.html dist/rig.html dist/sw.js
           grep -q "data-version=\"${stamp}\"" dist/index.html
 

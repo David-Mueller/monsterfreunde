@@ -313,6 +313,14 @@ document.addEventListener('visibilitychange', () => {
 reduced.addEventListener('change', () => { clearAction(); speech.classList.remove('visible'); idle(); });
 $('#reload').addEventListener('click', () => window.location.reload());
 $('#version').textContent = version;
+// Tapping the version copies it, so a bug report can name the exact build.
+$('#version-button').addEventListener('click', async () => {
+  const button = $('#version-button');
+  try { await navigator.clipboard.writeText(version); } catch (error) { /* clipboard unavailable */ }
+  button.classList.add('copied');
+  $('#version').textContent = 'kopiert';
+  setTimeout(() => { button.classList.remove('copied'); $('#version').textContent = version; }, 1200);
+});
 Sounds.bindToggle($('#sound'));
 // Offline copy of the app; the registration URL carries the version so a new
 // deployment always installs a fresh worker.
