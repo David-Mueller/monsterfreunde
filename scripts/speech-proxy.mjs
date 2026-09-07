@@ -152,13 +152,16 @@ function sessionConfig(key) {
       input: {
         // Automatische Spracherkennung: das Kind redet einfach drauflos, das
         // Modell erkennt selbst Sprech-Ende (semantic_vad) und antwortet.
-        // interrupt_response aktiviert Barge-in — das Kind kann das Monster
-        // jederzeit unterbrechen.
+        // interrupt_response=false: Hintergrundgeräusche/Reinreden brechen das
+        // Monster NICHT mehr mitten im Satz ab (wie im ChatGPT-Voice-Mode) —
+        // Gesagtes wird gepuffert und danach beantwortet. eagerness 'low'
+        // macht die Erkennung zusätzlich unempfindlicher gegen kurze Laute.
+        // Stoppen geht weiterhin jederzeit über den ⏹️-Knopf.
         turn_detection: {
           type: 'semantic_vad',
-          eagerness: 'medium',
+          eagerness: 'low',
           create_response: true,
-          interrupt_response: true,
+          interrupt_response: false,
         },
       },
       output: { voice: m.voice },
