@@ -67,9 +67,13 @@
   let starting = null;         // Promise während des Verbindungsaufbaus
   let active = false;          // läuft gerade eine Session?
   let sessionMonster = null;   // Monster, für das die Session gilt
+  let sessionId = null;        // Server-Session-ID für die Heartbeats
+  let heartbeatTimer = 0;
   let maxTimer = 0;
   let childSpeaking = false;
   let monsterSpeaking = false;
+  let toolExecuting = false;   // während einer Modell-Aktion kein UI-Echo einspeisen
+  let lastInject = 0;          // Rate-Limit für eingespeiste UI-Aktionen
   const handledCalls = new Set();
 
   // --- Anzeige ---
@@ -102,6 +106,8 @@
   // --- Verbindung abbauen ---
   function teardown() {
     clearTimeout(maxTimer);
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = 0;
     handledCalls.clear();
     childSpeaking = monsterSpeaking = false;
     try { micStream && micStream.getTracks().forEach(t => t.stop()); } catch { /* egal */ }
@@ -112,6 +118,28 @@
     starting = null;
     active = false;
     sessionMonster = null;
+    sessionId = null;
+  }
+
+  // --- Heartbeat: meldet dem Proxy die tatsächliche Sprechzeit ---
+  function startHeartbeat(seconds) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = window.setInterval(sendHeartbeat, Math.max(5, seconds) * 1000);
+  }
+
+  async function sendHeartbeat() {
+    if (!active || !sessionId) return;
+    try {
+      const res = await fetch('/api/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      // Server signalisiert Session-Cap oder Tagesbudget erschöpft.
+      if (data && data.stop) { teardown(); idleLook(); app.say('Kleines Päuschen! Tipp wieder auf 🎤.'); }
+    } catch { /* Netzwerk kurz weg — der nächste Heartbeat versucht es erneut */ }
   }
 
   function stop() {
@@ -134,7 +162,9 @@
     try { args = item.arguments ? JSON.parse(item.arguments) : {}; } catch { args = {}; }
     const tool = Object.prototype.hasOwnProperty.call(TOOLS, item.name) ? TOOLS[item.name] : null;
     let output = 'unbekannt';
-    if (tool) { try { output = tool(args) || 'ok'; } catch { output = 'ups'; } }
+    // Flag verhindert, dass die vom Modell ausgelöste App-Aktion als UI-Echo
+    // zurück ins Gespräch gespeist wird (Doppel-Reaktion).
+    if (tool) { toolExecuting = true; try { output = tool(args) || 'ok'; } catch { output = 'ups'; } finally { toolExecuting = false; } }
     // Ergebnis zurückmelden und Modell weitersprechen lassen.
     sendEvent({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: item.call_id, output: String(output) } });
     sendEvent({ type: 'response.create' });
@@ -188,6 +218,7 @@
     }
     const data = await res.json();
     sessionMonster = data.monster || monster;
+    sessionId = data.session_id || null;
 
     // 2) WebRTC aufsetzen.
     pc = new RTCPeerConnection();
@@ -217,7 +248,10 @@
     if (!sdpRes.ok) throw new Error('webrtc_failed');
     await pc.setRemoteDescription({ type: 'answer', sdp: await sdpRes.text() });
 
-    // Session hart begrenzen (Tagesbudget-Reservierung des Servers einhalten).
+    // Heartbeats melden die echte Sprechzeit (zählt das Tagesbudget genau ab).
+    if (sessionId) startHeartbeat(data.heartbeat_seconds || 30);
+
+    // Zusätzliche harte Obergrenze pro Session, falls Heartbeats ausfallen.
     if (data.session_seconds) {
       maxTimer = window.setTimeout(() => { teardown(); idleLook(); app.say('Kleines Päuschen! Tipp wieder auf 🎤.'); }, data.session_seconds * 1000);
     }
@@ -251,6 +285,39 @@
   button.addEventListener('click', () => {
     if (active || starting) stop();
     else start();
+  });
+
+  // --- UI-Aktionen ins Gespräch einspeisen ---
+  // Wenn das Kind während einer laufenden Session in der App selbst kitzelt,
+  // füttert usw., erfährt das Monster davon und reagiert spontan mündlich.
+  function describeAction(d) {
+    if (!d || !d.action) return '';
+    switch (d.action) {
+      case 'kitzeln': {
+        const wo = { kopf: 'am Kopf', bauch: 'am Bauch', fuesse: 'an den Füßen', seite: 'an der Seite' }[d.zone] || '';
+        return `(Das Kind kitzelt dich gerade selbst ${wo}.)`;
+      }
+      case 'fuettern': {
+        const was = { keks: 'einem Keks', apfel: 'einem Apfel', saft: 'einem Schluck Saft' }[d.snack] || 'einem Snack';
+        return `(Das Kind füttert dich gerade mit ${was}.)`;
+      }
+      case 'huepfen': return '(Das Kind hat dich gerade selbst zum Hüpfen gebracht.)';
+      case 'tanzen': return '(Das Kind lässt dich gerade tanzen.)';
+      case 'besonderer_move': return '(Das Kind hat gerade deinen besonderen Trick ausgelöst.)';
+      default: return '';
+    }
+  }
+
+  window.addEventListener('monster:action', (e) => {
+    if (!active || !dc || dc.readyState !== 'open') return;
+    if (toolExecuting) return;                 // vom Modell selbst ausgelöst -> kein Echo
+    const now = Date.now();
+    if (now - lastInject < 3000) return;       // Kinder hämmern auf Knöpfe
+    const text = describeAction(e.detail);
+    if (!text) return;
+    lastInject = now;
+    sendEvent({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } });
+    sendEvent({ type: 'response.create' });
   });
 
   // Beim Verlassen/Ausblenden der Seite alles sauber schließen.

@@ -13,6 +13,7 @@
 import http from 'node:http';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -22,12 +23,18 @@ const ALLOWED_ORIGIN = 'https://davids-macbook-pro.macaroni-wezen.ts.net:8443';
 const MODEL = 'gpt-realtime-2.1-mini';
 const CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
 
-// Kostendeckel: jede erteilte Session reserviert ein festes Zeitbudget; pro Tag
-// stehen 30 Minuten zur Verfügung. Der Client trennt die Verbindung nach
-// SESSION_MINUTES automatisch, sodass die Reservierung dem echten Verbrauch
-// nahekommt.
+// Kostendeckel auf Basis der TATSÄCHLICHEN Nutzung: Der Client schickt während
+// einer aktiven Session alle 30 s einen Heartbeat; der Proxy zählt pro Session
+// die vergangene Zeit (gedeckelt auf SESSION_CAP_SECONDS) plus eine kleine
+// Grundgebühr (BASE_SECONDS) je gestarteter Session. Bleiben die Heartbeats aus
+// (Session beendet), wächst die gezählte Zeit nicht weiter. Pro Tag stehen
+// DAILY_LIMIT_MINUTES zur Verfügung.
 const SESSION_MINUTES = 5;
 const DAILY_LIMIT_MINUTES = 30;
+const SESSION_CAP_SECONDS = SESSION_MINUTES * 60; // Obergrenze pro Session
+const BASE_SECONDS = 30;                           // Grundgebühr je Session
+const DAILY_LIMIT_SECONDS = DAILY_LIMIT_MINUTES * 60;
+const HEARTBEAT_SECONDS = 30;                      // Client-Intervall
 const USAGE_FILE = path.join(homedir(), '.claude', 'state', 'monster-speech-usage.json');
 
 // --- API-Key laden (nur in dieser Variable, nie loggen, nie an den Client) ---
@@ -165,29 +172,51 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// usage.json: { date, sessions: { <id>: { started: <epoch_ms>, seconds } } }
 function readUsage() {
   try {
     const data = JSON.parse(readFileSync(USAGE_FILE, 'utf8'));
-    if (data && data.date === today() && typeof data.minutesUsed === 'number') return data;
+    if (data && data.date === today() && data.sessions && typeof data.sessions === 'object') return data;
   } catch {
-    // keine Datei / neuer Tag
+    // keine Datei / neuer Tag / altes Format
   }
-  return { date: today(), minutesUsed: 0 };
+  return { date: today(), sessions: {} };
 }
 
-function reserveMinutes() {
-  const usage = readUsage();
-  if (usage.minutesUsed + SESSION_MINUTES > DAILY_LIMIT_MINUTES) {
-    return { ok: false, remaining: Math.max(0, DAILY_LIMIT_MINUTES - usage.minutesUsed) };
-  }
-  usage.minutesUsed += SESSION_MINUTES;
+function writeUsage(usage) {
   try {
     mkdirSync(path.dirname(USAGE_FILE), { recursive: true });
     writeFileSync(USAGE_FILE, JSON.stringify(usage));
   } catch (error) {
     console.error('[speech-proxy] Konnte Nutzungszähler nicht schreiben:', error.message);
   }
-  return { ok: true, remaining: DAILY_LIMIT_MINUTES - usage.minutesUsed };
+}
+
+function usedSeconds(usage) {
+  return Object.values(usage.sessions).reduce((sum, s) => sum + (s && s.seconds || 0), 0);
+}
+
+function remainingMinutes(usage) {
+  return Math.max(0, Math.round((DAILY_LIMIT_SECONDS - usedSeconds(usage)) / 60));
+}
+
+// Bucht die Grundgebühr einer neuen Session und liefert deren id.
+function startSession(usage) {
+  const id = randomUUID();
+  usage.sessions[id] = { started: Date.now(), seconds: BASE_SECONDS };
+  writeUsage(usage);
+  return id;
+}
+
+// Verlängert die gezählte Zeit einer Session bis jetzt, gedeckelt auf
+// SESSION_CAP_SECONDS. Ohne Heartbeats wächst nichts weiter.
+function touchSession(usage, id) {
+  const s = usage.sessions[id];
+  if (!s) return false;
+  const elapsed = Math.round((Date.now() - s.started) / 1000);
+  s.seconds = Math.min(SESSION_CAP_SECONDS, Math.max(s.seconds, elapsed));
+  writeUsage(usage);
+  return true;
 }
 
 // --- HTTP-Hilfen ---
@@ -230,8 +259,8 @@ async function handleSession(req, res, origin) {
 
   const key = typeof body.monster === 'string' && monsters[body.monster] ? body.monster : 'momo';
 
-  const budget = reserveMinutes();
-  if (!budget.ok) {
+  const usage = readUsage();
+  if (usedSeconds(usage) + BASE_SECONDS > DAILY_LIMIT_SECONDS) {
     return sendJson(res, 429, { error: 'daily_limit', message: 'Die Monster schlafen schon. Morgen könnt ihr wieder zusammen sprechen!' }, origin);
   }
 
@@ -247,18 +276,41 @@ async function handleSession(req, res, origin) {
       console.error('[speech-proxy] client_secrets fehlgeschlagen:', response.status, JSON.stringify(data?.error || data)?.slice(0, 300));
       return sendJson(res, 502, { error: 'upstream', message: 'Das Monster ist gerade eingeschlafen. Versuch es gleich nochmal.' }, origin);
     }
+    // Erst nach erfolgreichem Mint die Grundgebühr buchen.
+    const sessionId = startSession(usage);
     return sendJson(res, 200, {
       client_secret: data.value,
       expires_at: data.expires_at ?? null,
       model: MODEL,
       monster: key,
-      session_seconds: SESSION_MINUTES * 60,
-      remaining_minutes: budget.remaining,
+      session_id: sessionId,
+      session_seconds: SESSION_CAP_SECONDS,
+      heartbeat_seconds: HEARTBEAT_SECONDS,
+      remaining_minutes: remainingMinutes(usage),
     }, origin);
   } catch (error) {
     console.error('[speech-proxy] Netzwerkfehler bei client_secrets:', error.message);
     return sendJson(res, 502, { error: 'upstream', message: 'Das Monster ist gerade nicht erreichbar.' }, origin);
   }
+}
+
+// Heartbeat: zählt die tatsächliche Sprechzeit einer laufenden Session.
+async function handleHeartbeat(req, res, origin) {
+  let body;
+  try {
+    body = await readBody(req);
+  } catch {
+    return sendJson(res, 400, { error: 'bad_request' }, origin);
+  }
+  const id = typeof body.session_id === 'string' ? body.session_id : '';
+  const usage = readUsage();
+  const known = id ? touchSession(usage, id) : false;
+  const session = known ? usage.sessions[id] : null;
+  const capped = session ? session.seconds >= SESSION_CAP_SECONDS : false;
+  const remaining = remainingMinutes(usage);
+  // stop-Signal, wenn das Tagesbudget erschöpft oder die Session-Obergrenze
+  // erreicht ist — der Client beendet dann die Verbindung.
+  return sendJson(res, 200, { ok: known, remaining_minutes: remaining, stop: remaining <= 0 || capped }, origin);
 }
 
 const server = http.createServer((req, res) => {
@@ -277,11 +329,15 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
 
-  if (req.method === 'POST' && ['/api/session','/session'].includes(req.url)) {
+  if (req.method === 'POST' && ['/api/session', '/session'].includes(req.url)) {
     return handleSession(req, res, origin);
   }
 
-  if (req.method === 'GET' && ['/api/health','/health'].includes(req.url)) {
+  if (req.method === 'POST' && ['/api/heartbeat', '/heartbeat'].includes(req.url)) {
+    return handleHeartbeat(req, res, origin);
+  }
+
+  if (req.method === 'GET' && ['/api/health', '/health'].includes(req.url)) {
     return sendJson(res, 200, { ok: true }, origin);
   }
 
