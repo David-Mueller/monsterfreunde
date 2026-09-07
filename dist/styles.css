@@ -22,11 +22,13 @@ h1{font-size:clamp(27px,6.8vw,38px);font-weight:850;letter-spacing:-.045em;line-
 .monster-touch{padding:0;background:none;position:relative;display:block;width:100%;height:100%;border-radius:36%;touch-action:pan-y;z-index:2;opacity:0;transition:opacity .25s;outline-offset:-24px}
 .ready .monster-touch{opacity:1}
 .entrance,.character,.sprite{display:block;width:100%;height:100%}
-.character{transform-origin:50% 88%;animation:breathe 3.1s ease-in-out infinite;will-change:transform}
-body[data-monster="pip"] .character{animation-duration:2.2s}
+.character{transform-origin:50% 94%;will-change:transform}
 .sprite{background-image:var(--sheet);background-size:400% 200%;background-position:0% 0%;background-repeat:no-repeat;pointer-events:none}
-.main-sprite{filter:drop-shadow(0 9px 0 #30043119)}
-.ground{position:absolute;width:43%;height:5%;border-radius:50%;left:28.5%;top:89%;background:#2306293d;filter:blur(5px);transform:scaleX(1.05);animation:shadow-breathe 3.1s ease-in-out infinite}
+.main-sprite{filter:drop-shadow(0 9px 0 #30043119);position:relative}
+.main-sprite canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.main-sprite canvas[hidden]{display:none}
+.main-sprite.rendered{background-image:none}
+.ground{position:absolute;width:43%;height:5%;border-radius:50%;left:28.5%;top:94%;background:#2306293d;filter:blur(5px);will-change:transform,opacity}
 .arrow{flex:none;position:absolute;top:48%;z-index:3;display:grid;place-items:center;width:44px;height:44px;background:#ffffff0b;border:1px solid #ffffff1c;border-radius:50%;color:#fff9ffb3;transition:background .2s,transform .2s}
 .arrow:hover{background:#ffffff20}
 .arrow:active{transform:scale(.9)}
@@ -64,16 +66,6 @@ h2{font-size:29px;line-height:1.2;letter-spacing:-.045em;font-weight:850;margin:
 .particle{position:absolute;left:50%;top:46%;color:var(--accent);font-size:22px;line-height:1;animation:particle .8s ease-out forwards;will-change:transform,opacity}
 .load-error{text-align:center;font-size:16px;line-height:1.5;max-width:360px;background:#48123a;border:1px solid #ffffff40;border-radius:16px;padding:18px}
 .load-error button{display:block;margin:12px auto 0;background:var(--accent);color:#3a2042;border-radius:10px;padding:10px 14px;font-weight:700}
-.character.tickle{animation:tickle .19s ease-in-out infinite}
-.character.jump{animation:hop .7s ease-in-out 2}
-.character.dance{animation:dance .46s ease-in-out infinite}
-.playground.jumping .ground{animation:jump-shadow .7s ease-in-out 2}
-@keyframes breathe{0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-4px) scale(1.015,.985)}}
-@keyframes shadow-breathe{50%{transform:scaleX(.93);opacity:.8}}
-@keyframes tickle{0%,100%{transform:rotate(-3deg) scale(1.03,.97)}50%{transform:rotate(3deg) scale(.98,1.02)}}
-@keyframes hop{0%,100%{transform:translateY(0) scale(1)}12%{transform:scale(1.09,.88)}38%{transform:translateY(-54px) scale(.97,1.03) rotate(-3deg)}55%{transform:translateY(-57px) rotate(3deg)}86%{transform:translateY(0) scale(1.07,.91)}}
-@keyframes jump-shadow{45%,60%{transform:scale(.65);opacity:.4}}
-@keyframes dance{0%,100%{transform:translateX(-8px) rotate(-5deg) scale(1.015,.985)}50%{transform:translateX(8px) translateY(-7px) rotate(5deg) scale(.985,1.015)}}
 @keyframes particle{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}15%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--spin)) scale(1);opacity:0}}
 @media(min-width:700px){.app{padding-top:34px;padding-bottom:26px}.ambient i{width:800px;height:800px;left:calc(50% - 400px);top:calc(42% - 400px)}.ambient i:nth-child(2){width:1100px;height:1100px;left:calc(50% - 550px);top:calc(42% - 550px)}.ambient i:nth-child(3){width:1450px;height:1450px;left:calc(50% - 725px);top:calc(42% - 725px)}.playground{max-width:470px}.arrow{width:46px;height:46px}.monster-area{width:min(100%,390px)}}
 @media(max-width:380px){.app{padding-left:15px;padding-right:15px}.action{padding:11px 12px;gap:5px}.actions{gap:7px}.arrow{width:38px;height:38px}.personality{font-size:14px}}
