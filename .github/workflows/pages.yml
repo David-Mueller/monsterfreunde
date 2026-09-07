@@ -41,6 +41,7 @@ jobs:
           node --check dist/app.js
           node --check dist/monster-motion.js
           node --check dist/rig.js
+          node --check dist/sounds.js
           node --check dist/rig-app.js
           test -s dist/assets/rig.json
           test -s dist/index.html

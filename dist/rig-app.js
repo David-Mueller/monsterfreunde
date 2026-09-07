@@ -3,9 +3,9 @@
 // Driver for rig.html: the same actions as the main page, rendered with the
 // part-based rig instead of morphing whole drawings.
 const monsters = {
-  momo: { name: 'Momo', personality: 'Der Wuschel', theme: '#73066d', tempo: 1, blink: [3400, 1500],
+  momo: { name: 'Momo', personality: 'Der Wuschel', theme: '#73066d', tempo: 1, blink: [3400, 1500], voice: 250,
     lines: { tickle: ['Hihihi!', 'Nicht am Bauch!'], jump: ['Boing!', 'Bis zu den Wolken!'], dance: ['Wackel, wackel!', 'So geht mein Monstertanz!'], wave: ['Hallo!', 'Huhu!'] } },
-  pip: { name: 'Pip', personality: 'Der Wirbelwind', theme: '#473178', tempo: 1.15, blink: [2500, 1500],
+  pip: { name: 'Pip', personality: 'Der Wirbelwind', theme: '#473178', tempo: 1.15, blink: [2500, 1500], voice: 390,
     lines: { tickle: ['Hahaha! Nochmal!', 'Das kitzelt!'], jump: ['Huuui!', 'Einmal bis zum Mond!'], dance: ['Wackel mit!', 'Tanzparty!'], wave: ['Hallo!', 'Hier bin ich!'] } }
 };
 const keys = Object.keys(monsters);
@@ -90,6 +90,7 @@ function animate(now) {
     } else {
       body = MonsterMotion.body(running.name, elapsed, running.duration, now / 1000, monster().tempo);
       pose = RigMotion.pose(running.name, elapsed, running.duration, now / 1000);
+      while (running.fired < running.clip.moments.length && elapsed >= running.clip.moments[running.fired].at) Sounds.play(running.clip.moments[running.fired++].kind, monster().voice);
     }
   }
   if (reduced.matches) { body = { x: 0, y: 0, r: 0, sx: 1, sy: 1, height: 0 }; }
@@ -126,7 +127,7 @@ function selectMonster(key, greet = true) {
   $('#personality').textContent = chosen.personality;
   touch.setAttribute('aria-label', `${chosen.name} kitzeln`);
   rig = new MonsterRig($('#rig'), rigData, key);
-  if (greet) { startClip('wave'); say(`Hallo! Ich bin ${chosen.name}.`, 1400); }
+  if (greet) { startClip('wave'); Sounds.play('hello', chosen.voice); say(`Hallo! Ich bin ${chosen.name}.`, 1400); }
   else { scheduleBlink(); scheduleFrame(); }
 }
 
@@ -143,6 +144,7 @@ document.addEventListener('visibilitychange', () => {
   else { scheduleBlink(); scheduleFrame(); }
 });
 $('#version').textContent = version;
+Sounds.bindToggle($('#sound'));
 
 fetch(`assets/rig.json?v=${encodeURIComponent(version)}`).then(response => {
   if (!response.ok) throw new Error('Missing rig data');

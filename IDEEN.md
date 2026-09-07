@@ -33,15 +33,16 @@ Die erste Version bleibt ein unkompliziertes Spiel. Hungeranzeigen oder zeitabh�
 
 ### 3. Lustige Töne und Sounds
 
-- [ ] Kichern beim Kitzeln, ein lustiges „Boing“ beim Hüpfen, Kau- und Schluckgeräusche beim Essen und Trinken.
+- [x] Kichern beim Kitzeln, ein lustiges „Boing“ beim Hüpfen und ein Plumps bei der Landung; Kau- und Schluckgeräusche folgen mit dem Essen.
 - [ ] Einen passenden Sound zu jedem besonderen Move ergänzen.
-- [ ] Momo und Pip unterschiedlich klingen lassen.
-- [ ] Sounds genau mit den passenden Bewegungsmomenten auslösen.
-- [ ] Mehrere kurze Varianten pro Aktion, damit Wiederholungen lebendiger wirken.
-- [ ] Gut erreichbarer Ton-an/aus-Schalter und zurückhaltende Lautstärke.
-- [ ] Audio erst nach einer bewussten Berührung starten; schnelle Wiederholungen dürfen keine unkontrollierten Sound-Überlagerungen erzeugen.
+- [x] Momo und Pip unterschiedlich klingen lassen: eigene Stimmlage pro Monster.
+- [x] Sounds genau mit den passenden Bewegungsmomenten auslösen: Absprung, Landung, Tanzschläge, Kicherer.
+- [x] Kleine Zufallsabweichungen pro Wiedergabe, damit Wiederholungen lebendiger wirken.
+- [x] Ton-Schalter oben rechts, Einstellung bleibt auf dem Gerät gespeichert, zurückhaltende Lautstärke.
+- [x] Audio startet erst mit der ersten Aktion; jede Klangart ist zeitlich begrenzt, sodass schnelle Wiederholungen nicht überlagern.
+- [ ] Die Klänge werden im Browser synthetisiert, es gibt keine Audiodateien. Prüfen, ob echte Aufnahmen später hübscher sind.
 
-Das visuelle Kitzeln ist bereits vorhanden. In diesem Schritt bekommt es zusätzliche Reaktionen und hörbares Lachen.
+Das visuelle Kitzeln ist bereits vorhanden und hat jetzt hörbares Lachen.
 
 ### 4. Später: Witze erzählen mit ElevenLabs
 

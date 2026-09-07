@@ -5,12 +5,12 @@
 const monsters = {
   momo: {
     name: 'Momo', personality: 'Der Wuschel', description: 'Momo, ein freundliches blaues Wuschelmonster',
-    sheet: 'assets/momo.png', theme: '#73066d', tempo: 1, blink: [3400, 1500],
+    sheet: 'assets/momo.png', theme: '#73066d', tempo: 1, blink: [3400, 1500], voice: 250,
     lines: { tickle: ['Hihihi!', 'Nicht am Bauch!', 'Du bist kitzelig … ich auch!'], jump: ['Boing!', 'Bis zu den Wolken!'], dance: ['Wackel, wackel!', 'So geht mein Monstertanz!'] }
   },
   pip: {
     name: 'Pip', personality: 'Der Wirbelwind', description: 'Pip, ein fröhliches orangefarbenes Monster mit kleinen Hörnern',
-    sheet: 'assets/pip.png', theme: '#473178', tempo: 1.15, blink: [2500, 1500],
+    sheet: 'assets/pip.png', theme: '#473178', tempo: 1.15, blink: [2500, 1500], voice: 390,
     lines: { tickle: ['Hahaha! Nochmal!', 'Hihi, erwischt!', 'Das kitzelt!'], jump: ['Huuui!', 'Einmal bis zum Mond!'], dance: ['Wackel mit!', 'Tanzparty!'] }
   }
 };
@@ -77,6 +77,7 @@ function startClip(name) {
 
 // Named instants inside a clip, e.g. the take-off of a jump or a dance beat.
 function moment(kind) {
+  Sounds.play(kind, monster().voice);
   if (reduced.matches) return;
   if (kind === 'land') burst('jump');
   if (kind === 'beat') burst('dance', 3);
@@ -189,6 +190,7 @@ function selectMonster(key, greet = true) {
       { transform: 'translateY(0) scale(1)', opacity: 1 }
     ], { duration: 360, easing: 'ease-out' });
     startClip('wave');
+    Sounds.play('hello', chosen.voice);
     say(`Hallo! Ich bin ${chosen.name}.`, 1400);
   } else idle();
 }
@@ -242,6 +244,7 @@ document.addEventListener('visibilitychange', () => {
 reduced.addEventListener('change', () => { clearAction(); speech.classList.remove('visible'); idle(); });
 $('#reload').addEventListener('click', () => window.location.reload());
 $('#version').textContent = version;
+Sounds.bindToggle($('#sound'));
 
 Promise.all([
   ...keys.map(key => new Promise((resolve, reject) => {

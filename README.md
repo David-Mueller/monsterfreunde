@@ -10,8 +10,9 @@ Eine kleine Webapp für Android im Hochformat: Momo und Pip auswählen, kitzeln,
 - Federnde Körperbewegung und zum Sprung passender Schatten.
 - Auswahl per Touch, Wischen oder Tastatur.
 - Berücksichtigung reduzierter Bewegung und Pause bei ausgeblendetem Tab.
+- Synthetische Sounds ohne Audiodateien: Kichern, Boing, Plumps, Tanzschläge und Begrüßung, mit eigener Stimmlage pro Monster und Ton-Schalter.
 
-Die App benötigt weder einen Build-Schritt noch einen eigenen Backend-Server. Neue Spielaktionen und Sounds sind noch nicht implementiert; die Ideen stehen in [IDEEN.md](IDEEN.md).
+Die App benötigt weder einen Build-Schritt noch einen eigenen Backend-Server. Weitere Ideen stehen in [IDEEN.md](IDEEN.md).
 
 ## Lokal starten
 
@@ -28,6 +29,7 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `dist/index.html` | Oberfläche und Bedienelemente |
 | `dist/styles.css` | Gestaltung und responsive Größen |
 | `dist/app.js` | Auswahl, Aktionen und Animationssteuerung |
+| `dist/sounds.js` | Synthetische Sounds und Ton-Schalter |
 | `dist/monster-motion.js` | Zwischenbild-Berechnung, WebGL und Bewegungsmodelle |
 | `dist/assets/` | Monsterzeichnungen und Animations-Landmarken |
 | `dist/rig.html`, `dist/rig.js`, `dist/rig-app.js` | Prototyp des Baukasten-Rigs aus ANIMATION.md, erreichbar unter `/rig.html` |
