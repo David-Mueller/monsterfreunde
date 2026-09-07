@@ -26,7 +26,7 @@ Jedes Monster wird einmal in Neutralstellung gezeichnet, aber in einzelnen Teile
 | Augen | – | – | Entfallen: Augenweiß, Pupillen, Lider und Brauen werden im Code gezeichnet |
 | Mund | Mundmitte | zu, lächelnd, offen, lachend, O | Für Sprechen, Kauen und Lachen |
 | Arm links / rechts | Schulter | offen, Faust | Ein Stück inklusive Hand, hinter dem Körper |
-| Bein links / rechts | Hüfte | – | Ein Stück inklusive Fuß, hinter dem Körper |
+| Bein links / rechts | Hüfte, bei langen Beinen zusätzlich Knie | – | Ober- und Unterschenkel inklusive Fuß, hinter dem Körper |
 
 Arme und Beine liegen hinter dem Körper. Dadurch darf ihr Ansatz unsauber sein, weil er vom Körper verdeckt wird, und das Drehen um Schulter und Hüfte sieht immer richtig aus.
 
@@ -74,7 +74,7 @@ Eine versteckte Seite `rig.html` zeigt das zusammengesetzte Monster. Teile lasse
 2. ~~Hauptseite auf das Rig umstellen, Morph-Renderer entfernen.~~ Erledigt; Essen, Moves, Leerlauf und Sounds laufen über das Rig.
 3. Teile-Sheets mit dem Bildwerkzeug erzeugen und einwechseln. Wichtig dabei: Arme und Hände brauchen eine Kontur oder eine leicht andere Farbe als das Gesicht, sonst verschwinden sie, wenn sie vor dem Körper liegen.
 4. Rig-Editor ergänzen, Drehpunkte sauber setzen.
-5. Beine als Teile, damit Sprünge die Füße anziehen und ein Laufzyklus möglich wird.
+5. ~~Beine als Teile, damit Sprünge die Füße anziehen.~~ Erledigt: Hüfte für alle, Knie für lange Beine. Ein Laufzyklus ist damit möglich.
 6. Danach die Ideen aus IDEEN.md: Sprechen, Designer, Welt.
 
 ## Entscheidungen, die offen sind

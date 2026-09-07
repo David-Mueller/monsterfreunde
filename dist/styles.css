@@ -30,6 +30,7 @@ h1{font-size:clamp(27px,6.8vw,38px);font-weight:850;letter-spacing:-.045em;line-
 .main-sprite.rendered{background-image:none}
 .part{position:absolute;display:block;pointer-events:none;will-change:transform}
 .part img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.part-lower{position:absolute;display:block;pointer-events:none;will-change:transform}
 .eye-white{position:absolute;inset:0;border-radius:50%;background:#fff}
 .pupil{position:absolute;left:50%;top:50%;width:54%;height:54%;margin:-27% 0 0 -27%;border-radius:50%;transition:opacity .05s}
 .lid{position:absolute;inset:-3%;border-radius:50%;background:var(--skin);transform-origin:50% 0;transform:scaleY(0)}

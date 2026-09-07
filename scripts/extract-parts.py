@@ -234,8 +234,57 @@ for name in ('momo', 'pip', 'lumi', 'zing'):
             body_image[side_arms, :3] = skin.astype(np.uint8)
     else:
         body_image = inpaint(p0, hole)
+    # Legs: everything below the thick torso core. Long legs get a knee and
+    # two segments, stubby feet stay one piece. Legs sit behind the body so
+    # the hip joint is hidden, and the upper end is stretched a little into
+    # the body so nothing pokes out when the leg swings.
+    silhouette = largest(ndimage.binary_fill_holes(opaque))
+    leg_radius = int(min(n*.08, silhouette.sum(1).max()*.3))
+    leg_core = largest(ndimage.binary_opening(silhouette, structure=disk(leg_radius)))
+    core_rows = np.where(leg_core.any(1))[0]
+    core_bottom = int(core_rows.max()) if len(core_rows) else int(n*.8)
+    leg_zone = opaque & ~ndimage.binary_dilation(leg_core, structure=disk(int(n*.015))) & (yy > core_bottom - n*.08)
+    leg_zone = ndimage.binary_opening(leg_zone, structure=disk(2))
+    leg_labels, leg_count = ndimage.label(leg_zone)
+    leg_sizes = ndimage.sum(leg_zone, leg_labels, range(1, leg_count+1))
+    big = [i+1 for i, size in enumerate(leg_sizes) if size > n*n*.003 and np.where(leg_labels == i+1)[0].min() > core_bottom - n*.1]
+    centre_x = ndimage.center_of_mass(leg_core)[1]
+    leg_masks = {}
+    if len(big) >= 2:
+        big.sort(key=lambda i: np.where(leg_labels == i)[1].mean())
+        leg_masks['left'], leg_masks['right'] = leg_labels == big[0], leg_labels == big[-1]
+    elif len(big) == 1:
+        one = leg_labels == big[0]
+        xs_grid = np.indices(opaque.shape)[1]
+        leg_masks['left'], leg_masks['right'] = one & (xs_grid < centre_x), one & (xs_grid >= centre_x)
+    legs = np.zeros_like(opaque)
+    for mask in leg_masks.values():
+        legs |= mask
+    body &= ~legs
     parts = {}
     parts['body'] = {'box': save(body_image, body, OUT/f'{name}-body.png'), 'z': 2}
+    for side, mask in leg_masks.items():
+        if mask.sum() < n*n*.002:
+            continue
+        ys, xs = np.where(mask)
+        top, bottom = int(ys.min()), int(ys.max())
+        height = bottom - top
+        # Reach up into the body for the hidden hip joint.
+        reach = ndimage.binary_dilation(mask, structure=disk(int(n*.03))) & opaque & (yy < top + n*.03) & (yy >= top - n*.04)
+        whole = mask | reach
+        hip_rows = np.where(whole[top:top+6].any(1))[0]
+        hip_x = int(np.where(whole[top:top+6])[1].mean()) if len(hip_rows) else int(xs.mean())
+        hip = [hip_x, top + int(n*.015)]
+        if height > n*.18:
+            knee_y = top + int(height*.5)
+            knee_x = int(np.where(whole[knee_y])[0].mean())
+            overlap = int(n*.02)
+            upper = whole & (yy < knee_y + overlap)
+            lower = whole & (yy >= knee_y - overlap)
+            parts[f'leg-{side}'] = {'box': save(p0, upper, OUT/f'{name}-leg-{side}.png'), 'pivot': hip, 'z': 1,
+                                    'lower': {'box': save(p0, lower, OUT/f'{name}-shin-{side}.png'), 'pivot': [knee_x, knee_y]}}
+        else:
+            parts[f'leg-{side}'] = {'box': save(p0, whole, OUT/f'{name}-leg-{side}.png'), 'pivot': hip, 'z': 1}
     for part_name, mask in accent_masks.items():
         wide = ndimage.binary_dilation(mask, structure=disk(int(n*.02))) & opaque
         ys, xs = np.where(mask)

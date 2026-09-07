@@ -10,17 +10,20 @@ const VERSION = '__VERSION__';
 const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal-four-monsters-v5' : VERSION}`;
 const FILES = [
   './', 'index.html', 'styles.css', 'app.js', 'monster-motion.js', 'rig.js', 'sounds.js', 'manifest.webmanifest',
-  'assets/momo.png', 'assets/pip.png', 'assets/lumi.png', 'assets/zing.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png',
-  ...['body', 'mouth', 'mouth-open', 'mouth-laugh', 'arm-left', 'arm-right']
-    .flatMap(part => ['momo', 'pip', 'lumi', 'zing'].map(monster => `assets/parts/${monster}-${part}.png`)),
-  'assets/parts/momo-hair.png',
-  'assets/parts/pip-horn-left.png', 'assets/parts/pip-horn-right.png',
-  'assets/parts/lumi-hair.png', 'assets/parts/lumi-horn-left.png', 'assets/parts/lumi-horn-right.png',
-  'assets/parts/zing-hair.png'
+  'assets/momo.png', 'assets/pip.png', 'assets/lumi.png', 'assets/zing.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png'
 ];
 
+// Every part image listed in the rig data is stored too, so new monsters
+// and new parts never need a change here.
+async function partFiles() {
+  const rig = await (await fetch('assets/rig.json')).json();
+  return Object.entries(rig).flatMap(([monster, data]) => Object.entries(data.parts)
+    .filter(([part]) => !part.startsWith('eye'))
+    .flatMap(([part, info]) => [`assets/parts/${monster}-${part}.png`, ...(info.lower ? [`assets/parts/${monster}-${part.replace('leg', 'shin')}.png`] : [])]));
+}
+
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then(async cache => cache.addAll([...FILES, ...await partFiles()])).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {

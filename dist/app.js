@@ -74,8 +74,8 @@ let nextIdle = 0;
 const IDLE = ['peek', 'hop', 'wave', 'peek'];
 const springs = Object.fromEntries(Object.entries({x:0,y:0,r:0,sx:1,sy:1,height:0}).map(([key,value]) => [key,new MonsterMotion.Spring(value)]));
 // Rig channels blend on the transform level, so a new action never jumps.
-const channels = Object.fromEntries(Object.entries({ armLeft: RigMotion.REST.armLeft, armRight: RigMotion.REST.armRight, armLeftLift: 0, armRightLift: 0, happy: 0, gazeX: 0, gazeY: 0, frown: 0, browLift: 0, mouthScaleX: 1, mouthScaleY: 1, hairR: 0, hairSy: 1 }).map(([key, value]) => [key, new MonsterMotion.Spring(value)]));
-const CHANNEL_SPEED = { armLeft: 30, armRight: 30, armLeftLift: 30, armRightLift: 30, happy: 26, gazeX: 16, gazeY: 16, frown: 20, browLift: 20, mouthScaleX: 40, mouthScaleY: 40, hairR: 9, hairSy: 14 };
+const channels = Object.fromEntries(Object.entries({ armLeft: RigMotion.REST.armLeft, armRight: RigMotion.REST.armRight, armLeftLift: 0, armRightLift: 0, happy: 0, gazeX: 0, gazeY: 0, frown: 0, browLift: 0, mouthScaleX: 1, mouthScaleY: 1, hairR: 0, hairSy: 1, hipL: 0, kneeL: 0, hipR: 0, kneeR: 0 }).map(([key, value]) => [key, new MonsterMotion.Spring(value)]));
+const CHANNEL_SPEED = { armLeft: 30, armRight: 30, armLeftLift: 30, armRightLift: 30, happy: 26, gazeX: 16, gazeY: 16, frown: 20, browLift: 20, mouthScaleX: 40, mouthScaleY: 40, hairR: 9, hairSy: 14, hipL: 28, kneeL: 28, hipR: 28, kneeR: 28 };
 
 const monster = () => monsters[selected];
 
@@ -205,14 +205,16 @@ function animate(now) {
   ground.style.opacity = String(1 - altitude * .65);
   // Face and arms follow their targets with springs; hair swings behind the
   // body with a lag, and stretches a little when the body squashes.
-  const wanted = { armLeft: pose.armLeft, armRight: pose.armRight, armLeftLift: pose.armLeftLift || 0, armRightLift: pose.armRightLift || 0, happy: pose.eyes.happy, gazeX: pose.eyes.gazeX, gazeY: pose.eyes.gazeY, frown: pose.eyes.frown || 0, browLift: pose.eyes.browLift || 0, mouthScaleX: pose.mouthScaleX ?? 1, mouthScaleY: pose.mouthScaleY ?? 1, hairR: -motion.r * 1.3 - motion.x * .4 + (pose.hairR || 0), hairSy: 1 - (motion.sy - 1) * .9 };
+  const wanted = { armLeft: pose.armLeft, armRight: pose.armRight, armLeftLift: pose.armLeftLift || 0, armRightLift: pose.armRightLift || 0, happy: pose.eyes.happy, gazeX: pose.eyes.gazeX, gazeY: pose.eyes.gazeY, frown: pose.eyes.frown || 0, browLift: pose.eyes.browLift || 0, mouthScaleX: pose.mouthScaleX ?? 1, mouthScaleY: pose.mouthScaleY ?? 1, hairR: -motion.r * 1.3 - motion.x * .4 + (pose.hairR || 0), hairSy: 1 - (motion.sy - 1) * .9,
+    hipL: pose.hip || 0, kneeL: pose.knee || 0, hipR: pose.hipRight ?? -(pose.hip || 0), kneeR: pose.kneeRight ?? -(pose.knee || 0) };
   const smoothed = {};
   for (const key of Object.keys(channels)) smoothed[key] = reduced.matches ? wanted[key] : channels[key].step(wanted[key], dt, CHANNEL_SPEED[key]);
   rig.set({
     armLeft: smoothed.armLeft, armRight: smoothed.armRight, armLeftLift: smoothed.armLeftLift, armRightLift: smoothed.armRightLift,
     eyes: { open: pose.eyes.open, happy: smoothed.happy, gazeX: smoothed.gazeX, gazeY: smoothed.gazeY, frown: smoothed.frown, browLift: smoothed.browLift },
     mouth: pose.mouth, mouthScaleX: smoothed.mouthScaleX, mouthScaleY: smoothed.mouthScaleY,
-    hair: { r: smoothed.hairR, sx: 1, sy: smoothed.hairSy }
+    hair: { r: smoothed.hairR, sx: 1, sy: smoothed.hairSy },
+    legs: { left: { hip: smoothed.hipL, knee: smoothed.kneeL }, right: { hip: smoothed.hipR, knee: smoothed.kneeR } }
   });
   if (!reduced.matches || currentClip) scheduleFrame();
 }
@@ -397,7 +399,7 @@ fetch(`assets/rig.json?v=${encodeURIComponent(version)}`).then(response => {
   return response.json();
 }).then(data => {
   rigData = data;
-  const files = keys.flatMap(key => Object.keys(data[key].parts).filter(part => !part.startsWith('eye')).map(part => `assets/parts/${key}-${part}.png`));
+  const files = keys.flatMap(key => Object.entries(data[key].parts).filter(([part]) => !part.startsWith('eye')).flatMap(([part, info]) => [`assets/parts/${key}-${part}.png`, ...(info.lower ? [`assets/parts/${key}-${part.replace('leg', 'shin')}.png`] : [])]));
   return Promise.all(files.map(src => new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve();

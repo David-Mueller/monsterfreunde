@@ -5,7 +5,7 @@ Eine kleine Webapp für Android im Hochformat: Momo, Pip, Lumi oder Zing auswäh
 ## Aktueller Stand
 
 - Vier eigene Monster mit deutlich unterschiedlichen Silhouetten: Momo, Pip, das kosmische Sternchen Lumi und der langbeinige Gummiwurm Zing.
-- Baukasten-Rig statt Posenwechsel: Körper, Haare beziehungsweise Hörner, Augenweiß, drei Münder und beide Arme sind einzelne Teile, die per CSS-Transform bewegt werden. Pupillen und Lider werden im Code gezeichnet. Alle Bewegungen laufen über Federn, sodass jede Aktion aus der aktuellen Haltung heraus beginnt und weich in die Ruhehaltung zurückkehrt. Kein Morphen, kein Schnitt.
+- Baukasten-Rig statt Posenwechsel: Körper, Haare beziehungsweise Hörner, drei Münder, beide Arme und beide Beine sind einzelne Teile, die per CSS-Transform bewegt werden. Lange Beine haben ein Knie und ziehen beim Sprung an, kurze Füße kippen mit. Pupillen und Lider werden im Code gezeichnet. Alle Bewegungen laufen über Federn, sodass jede Aktion aus der aktuellen Haltung heraus beginnt und weich in die Ruhehaltung zurückkehrt. Kein Morphen, kein Schnitt.
 - Blinzeln, Atmen, Begrüßung, Hüpfen und Tanzen. Kitzeln in fünf Zonen: Kopf, Bauch, Füße und beide Seiten reagieren verschieden.
 - Augen, Pupillen, Lider und Brauen im Code, mit Ausdrücken von lachend bis angewidert.
 - Ein besonderer Move pro Monster: Momos Wirbel, Pips Salto, Lumis Sternenfunkeln und Zings Superschlängler.
@@ -40,7 +40,7 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 | `dist/rig.js` | Rig-Laufzeit und Kanalwerte pro Aktion |
 | `dist/assets/` | Posen-Sheets für Portraits und Teile-Extraktion, Icons |
 | `dist/assets/parts/`, `dist/assets/rig.json` | Rig-Teile und Rig-Daten, vorerst aus den Posen geschnitten |
-| `scripts/extract-parts.py` | Schneidet Körper, Augen, Münder und Arme aus den vorhandenen Posen |
+| `scripts/extract-parts.py` | Schneidet Körper, Haare, Münder, Arme und Beine aus den vorhandenen Posen und berechnet Schultern, Hüften und Knie |
 | `scripts/prepare-motion.py` | Leitet Landmarken aus den Posen ab, die `extract-parts.py` zum Finden der Hände nutzt |
 | `scripts/strip-fake-alpha.py` | Entfernt den künstlichen Schachbretthintergrund der Zing-Grafik reproduzierbar |
 | `scripts/preview-server.py`, `package.json` | Lokaler Vorschau-Server, auch für die Sites-Vorschau |

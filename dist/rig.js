@@ -46,6 +46,21 @@ class MonsterRig {
         element.append(white, pupil, lower, lid, brow);
         element.pupil = pupil; element.lid = lid; element.lower = lower; element.brow = brow;
       }
+      // A lower leg is nested inside the upper leg so it swings along with it.
+      if (part.lower) {
+        const lower = document.createElement('img');
+        lower.className = 'part-lower';
+        lower.src = `assets/parts/${key}-${name.replace('leg', 'shin')}.png`;
+        lower.alt = ''; lower.draggable = false;
+        const [ux0, uy0, ux1, uy1] = part.box, [lx0, ly0, lx1, ly1] = part.lower.box;
+        lower.style.left = `${(lx0 - ux0) / (ux1 - ux0) * 100}%`;
+        lower.style.top = `${(ly0 - uy0) / (uy1 - uy0) * 100}%`;
+        lower.style.width = `${(lx1 - lx0) / (ux1 - ux0) * 100}%`;
+        lower.style.height = `${(ly1 - ly0) / (uy1 - uy0) * 100}%`;
+        lower.style.transformOrigin = `${(part.lower.pivot[0] - lx0) / (lx1 - lx0) * 100}% ${(part.lower.pivot[1] - ly0) / (ly1 - ly0) * 100}%`;
+        element.append(lower);
+        element.lower = lower;
+      }
       root.append(element);
       this.parts[name] = element;
       if (part.pivot && part.tip) part.drawn = Math.atan2(part.tip[1] - part.pivot[1], part.tip[0] - part.pivot[0]) * 180 / Math.PI;
@@ -94,6 +109,17 @@ class MonsterRig {
       element.style.visibility = shown ? 'visible' : 'hidden';
       if (shown) element.style.transform = `scale(${state.mouthScaleX ?? 1},${(state.mouthScaleY ?? 1) * (state.mouth === 'frown' ? -1 : 1)})`;
     }
+    // Legs: `hip` swings the whole leg, `knee` bends the lower part, both in
+    // degrees from the drawn position. Mirrored values give the same look on
+    // both sides.
+    const legs = state.legs || {};
+    for (const side of ['left', 'right']) {
+      const element = this.parts[`leg-${side}`];
+      if (!element) continue;
+      const leg = legs[side] || {};
+      element.style.transform = `rotate(${leg.hip || 0}deg)`;
+      if (element.lower) element.lower.style.transform = `rotate(${leg.knee || 0}deg)`;
+    }
     const hair = state.hair || {};
     for (const name of ['hair', 'horn-left', 'horn-right']) {
       const element = this.parts[name];
@@ -122,7 +148,11 @@ const RigMotion = (() => {
       armLeft: REST.armLeft + Math.sin(clock * 2.1) * 2, armRight: REST.armRight - Math.sin(clock * 2.1 + .4) * 2,
       armLeftLift: 0, armRightLift: 0,
       eyes: { open: 1, happy: 0, gazeX: .18 * Math.sin(clock * .7), gazeY: .1 * Math.sin(clock * .5 + 1), frown: 0, browLift: 0 },
-      mouth: 'mouth', mouthScaleX: 1, mouthScaleY: 1, hairR: 0
+      mouth: 'mouth', mouthScaleX: 1, mouthScaleY: 1, hairR: 0,
+      // Leg pose for the viewer's left leg in degrees: positive swings the
+      // foot outward, a negative knee folds the shin back inward. The right
+      // leg mirrors it unless hipRight/kneeRight are set.
+      hip: 0, knee: 0
     };
     if (!action || action === 'settle') return state;
     const envelope = smooth(t / .22) * smooth((duration - t) / .38);
@@ -154,6 +184,8 @@ const RigMotion = (() => {
       state.mouthScaleY = 1 + .1 * Math.sin(t * 26) * in_;
     } else if (action === 'tickle-feet') {
       const in_ = smooth(t / .15) * smooth((duration - t) / .35);
+      // Feet kick up with every little hop.
+      for (const start of [.1, .46, .82]) { const p = (t - start) / .3; if (p >= 0 && p < 1) { const up = Math.sin(p * Math.PI); state.hip = 28 * up; state.knee = -50 * up; } }
       both(state, REST.armLeft + (190 - REST.armLeft) * in_ + Math.sin(t * 20) * 12 * in_, 6 * in_);
       state.eyes.happy = .8 * in_; state.eyes.gazeY = .5 * in_; state.eyes.browLift = .4 * in_;
       state.mouth = in_ > .5 ? 'mouth-laugh' : 'mouth';
@@ -180,26 +212,35 @@ const RigMotion = (() => {
       state.mouth = envelope > .5 ? 'mouth-open' : 'mouth';
       state.eyes.gazeX = -.35 * swing;
       state.eyes.happy = .25 * envelope;
+      // The leg on the lifted side steps out, the other stays planted.
+      state.hip = 16 * Math.max(0, swing); state.knee = -24 * Math.max(0, swing);
+      state.hipRight = -16 * Math.max(0, -swing); state.kneeRight = 24 * Math.max(0, -swing);
     } else if (action === 'jump') {
       for (const { start, takeoff, landing } of hops) {
         if (t >= start && t < takeoff) {
           const crouch = smooth((t - start) / (takeoff - start));
           both(state, REST.armLeft + 30 * crouch);
+          // Knees bend outward for the crouch.
+          state.hip = 14 * crouch; state.knee = -30 * crouch;
         } else if (t >= takeoff && t < landing) {
           const p = (t - takeoff) / (landing - takeoff), up = Math.sin(p * Math.PI);
           both(state, REST.armLeft + 30 + (240 - REST.armLeft - 30) * smooth(p * 3), 12 * up);
           state.mouth = 'mouth-open';
           state.eyes.gazeY = -.4 * up;
+          // Legs tuck up like the drawn jump pose: thighs out, shins folded back.
+          const tuck = smooth(p * 2.5) * smooth((1 - p) * 2.5);
+          state.hip = 55 * tuck; state.knee = -46 * tuck;
         } else if (t >= landing && t < landing + .32) {
           const dt = t - landing, recoil = Math.exp(-dt * 12) * Math.sin(dt * 30);
           both(state, REST.armLeft + 24 * recoil);
           state.eyes.happy = clamp(1 - dt * 3) * .5;
+          state.hip = 12 * recoil; state.knee = -26 * recoil;
         }
       }
     } else if (action === 'hop') {
-      if (t < .2) both(state, REST.armLeft + 20 * smooth(t / .2));
-      else if (t < .55) { const p = (t - .2) / .35; both(state, REST.armLeft + 20 + (200 - REST.armLeft - 20) * smooth(p * 2.5), 8 * Math.sin(p * Math.PI)); }
-      else { const dt = t - .55; both(state, REST.armLeft + 20 * Math.exp(-dt * 12) * Math.sin(dt * 30)); }
+      if (t < .2) { const c = smooth(t / .2); both(state, REST.armLeft + 20 * c); state.hip = 10 * c; state.knee = -22 * c; }
+      else if (t < .55) { const p = (t - .2) / .35, up = Math.sin(p * Math.PI); both(state, REST.armLeft + 20 + (200 - REST.armLeft - 20) * smooth(p * 2.5), 8 * up); state.hip = 30 * up; state.knee = -55 * up; }
+      else { const dt = t - .55, recoil = Math.exp(-dt * 12) * Math.sin(dt * 30); both(state, REST.armLeft + 20 * recoil); state.hip = 8 * recoil; state.knee = -18 * recoil; }
       state.eyes.happy = .3;
     } else if (action === 'peek') {
       // Eyes lead, the body follows: look one way, then the other.
@@ -248,9 +289,9 @@ const RigMotion = (() => {
         state.mouth = 'mouth-laugh';
       }
     } else if (action === 'flip') {
-      if (t < .3) { const crouch = smooth(t / .3); both(state, REST.armLeft + 30 * crouch); state.eyes.gazeY = -.4 * crouch; }
-      else if (t < 1.3) { both(state, 240, 12); state.mouth = 'mouth-open'; }
-      else if (t < 1.7) { const dt = t - 1.3, recoil = Math.exp(-dt * 11) * Math.sin(dt * 28); both(state, REST.armLeft + 24 * recoil); }
+      if (t < .3) { const crouch = smooth(t / .3); both(state, REST.armLeft + 30 * crouch); state.eyes.gazeY = -.4 * crouch; state.hip = 14 * crouch; state.knee = -30 * crouch; }
+      else if (t < 1.3) { const p = (t - .3) / 1, tuck = smooth(p * 2.5) * smooth((1 - p) * 2.5); both(state, 240, 12); state.mouth = 'mouth-open'; state.hip = 58 * tuck; state.knee = -50 * tuck; }
+      else if (t < 1.7) { const dt = t - 1.3, recoil = Math.exp(-dt * 11) * Math.sin(dt * 28); both(state, REST.armLeft + 24 * recoil); state.hip = 14 * recoil; state.knee = -30 * recoil; }
       else { const proud = smooth((t - 1.7) / .2) * smooth((duration - t) / .25); both(state, REST.armLeft + (240 - REST.armLeft) * proud, 10 * proud); state.eyes.happy = .6 * proud; state.mouth = proud > .5 ? 'mouth-open' : 'mouth'; }
     } else if (action === 'sparkle') {
       const floating = smooth(t / .3) * smooth((duration - t) / .42);
