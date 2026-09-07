@@ -79,7 +79,7 @@
     button.classList.toggle('active', active);
     button.classList.toggle('on', active && childSpeaking);
     button.classList.toggle('speaking', active && monsterSpeaking);
-    if (active) { setGlyph('😴'); button.setAttribute('aria-label', 'Gespräch beenden'); button.classList.remove('asleep'); }
+    if (active) { setGlyph('⏹️'); button.setAttribute('aria-label', 'Gespräch beenden'); button.classList.remove('asleep'); }
     else if (connecting) { setGlyph('🎤'); button.setAttribute('aria-label', 'Verbinde…'); }
   }
 
