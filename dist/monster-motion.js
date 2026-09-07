@@ -1,11 +1,11 @@
 'use strict';
 
-// In-between frames are computed from the existing drawings with a rigid
-// moving-least-squares deformation (Schaefer et al.): landmarks such as hands,
-// feet, eyes and mouth act as handles, and the picture around each handle
-// rotates and translates as one piece instead of stretching. Only one complete
-// drawing is visible at any time; the drawing switches halfway through each
-// pose step, when both drawings share the same handle positions.
+// In-between frames are computed from the existing drawings with a
+// similarity moving-least-squares deformation (Schaefer et al.): landmarks
+// such as hands, feet, eyes and mouth act as handles, and the picture around
+// each handle rotates, scales and moves as one piece instead of stretching.
+// Only one complete drawing is visible at any time; the drawing switches at a
+// point where both drawings share the same handle positions.
 class MonsterRenderer {
   constructor(root, landmarks) {
     this.root = root;
@@ -153,7 +153,8 @@ class MonsterRenderer {
 
   pose(frame) {
     const data=this.landmarks[this.key][frame];
-    return { frame, points:data.points, offset:data.offset, texture:this.textures.get(this.key), rect:[frame%4/4,Math.floor(frame/4)/2,.25,.5] };
+    data.handles||=MonsterRenderer.handles(data.points);
+    return { frame, points:data.handles, offset:data.offset, texture:this.textures.get(this.key), rect:[frame%4/4,Math.floor(frame/4)/2,.25,.5] };
   }
 
   // The picture currently on screen, so a new clip continues without a jump.
@@ -192,7 +193,7 @@ class MonsterRenderer {
 
   // Fills the mesh: every screen point gets the texture coordinate in drawing
   // A and in drawing B that lands there when the handles sit at their
-  // in-between positions. Rigid MLS keeps local shapes intact, so an arm turns
+  // in-between positions. MLS keeps local shapes intact, so an arm turns
   // towards its new place instead of being smeared across the gap.
   deform(a,b,mix) {
     const pivots=MonsterRenderer.pivots,joints=MonsterRenderer.joints;
@@ -238,18 +239,21 @@ class MonsterRenderer {
           cax+=w*ax[j]; cay+=w*ay[j]; cbx+=w*bx[j]; cby+=w*by[j];
         }
         cx/=sum; cy/=sum; cax/=sum; cay/=sum; cbx/=sum; cby/=sum;
-        const dx=x-cx,dy=y-cy,length=Math.hypot(dx,dy);
-        let fax=0,fay=0,fbx=0,fby=0;
+        const dx=x-cx,dy=y-cy;
+        let fax=0,fay=0,fbx=0,fby=0,mu=0;
         for (let j=0;j<count;j++) {
           const px=hx[j]-cx,py=hy[j]-cy;
           const dot=(px*dx+py*dy)*weights[j],cross=(px*dy-py*dx)*weights[j];
           const qax=ax[j]-cax,qay=ay[j]-cay,qbx=bx[j]-cbx,qby=by[j]-cby;
           fax+=qax*dot-qay*cross; fay+=qax*cross+qay*dot;
           fbx+=qbx*dot-qby*cross; fby+=qbx*cross+qby*dot;
+          mu+=(px*px+py*py)*weights[j];
         }
-        const la=Math.hypot(fax,fay)||1,lb=Math.hypot(fbx,fby)||1;
-        ux=cax+length*fax/la; uy=cay+length*fay/la;
-        vx=cbx+length*fbx/lb; vy=cby+length*fby/lb;
+        // Similarity variant: rotation, translation and uniform scale, so a
+        // feature drawn larger in the next pose grows instead of folding.
+        mu=mu||1;
+        ux=cax+fax/mu; uy=cay+fay/mu;
+        vx=cbx+fbx/mu; vy=cby+fby/mu;
       }
       this.vertices[vertex]=x; this.vertices[vertex+1]=y;
       this.vertices[vertex+2]=ux-a.offset[0]; this.vertices[vertex+3]=uy-a.offset[1];
@@ -287,9 +291,16 @@ class MonsterRenderer {
   }
 }
 
-// Landmark indices from scripts/prepare-motion.py: hands 12/13 belong to the
-// shoulder anchors 19/20, feet 14/15 to the hip anchors 23/24.
-MonsterRenderer.pivots=[[12,19],[13,20],[14,23],[15,24]];
+// scripts/prepare-motion.py stores four box points per eye and mouth. The
+// deformation uses their centres instead, so the face moves as one piece and
+// can never fold; the remaining landmarks are kept in their original order.
+// Handle layout: 0-2 eyes and mouth, 3/4 hands, 5/6 feet, 7-15 body, 16-23 border.
+MonsterRenderer.handles=points => {
+  const centre=(from,to) => { let x=0,y=0; for (let i=from;i<to;i++) { x+=points[i][0]; y+=points[i][1]; } return [x/(to-from),y/(to-from)]; };
+  return [centre(0,4),centre(4,8),centre(8,12),...points.slice(12)];
+};
+// Hands 3/4 swing around the shoulder anchors 10/11, feet 5/6 around the hips 14/15.
+MonsterRenderer.pivots=[[3,10],[4,11],[5,14],[6,15]];
 // Virtual joints, as fractions of the way from the anchor to the hand or foot.
 MonsterRenderer.joints=[1/3,2/3];
 
