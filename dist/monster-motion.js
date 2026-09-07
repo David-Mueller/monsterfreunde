@@ -63,6 +63,12 @@ const MonsterMotion = (() => {
       moments:hops.flatMap(hop => [{at:hop.takeoff,kind:'takeoff'},{at:hop.landing,kind:'land'}])},
     dance:{keys:[[0,0],[.34,2],[.90,3],[1.46,2],[2.02,3],[2.58,2],[3.14,3],[3.70,2],[4.18,0]],still:3,
       moments:[.34,.90,1.46,2.02,2.58,3.14,3.70].map(at => ({at,kind:'beat'}))},
+    // Eating: arms up while the snack flies in, then hands at the cheeks
+    // while chewing, a gulp, and back to neutral.
+    eat:{keys:[[0,0],[.22,5],[.95,5],[1.05,7],[2.45,7],[2.80,0]],still:7,
+      moments:[{at:.95,kind:'grab'},{at:1.15,kind:'chew'},{at:1.5,kind:'chew'},{at:1.85,kind:'chew'},{at:2.3,kind:'gulp'}]},
+    // Refusing a snack: eyes shut, head shake, then neutral.
+    yuck:{keys:[[0,0],[.25,1],[1.3,1],[1.6,0]],still:1,moments:[{at:.3,kind:'yuck'}]},
   };
   for (const clip of Object.values(clips)) clip.duration=clip.keys[clip.keys.length-1][0];
   // The pose to show at `elapsed` seconds: the previous key until halfway to
@@ -102,6 +108,24 @@ const MonsterMotion = (() => {
     } else if (action==='wave') {
       result.r=1.7*Math.sin(t*8)*envelope;
       result.y-=1.5*Math.sin(t*7)*envelope;
+    } else if (action==='eat') {
+      if (t<.95) {
+        // Excited little bounces while the snack is on its way.
+        const bounce=Math.max(0,Math.sin(t*14));
+        result.y-=4*bounce*envelope; result.sy+=.02*bounce*envelope; result.sx-=.015*bounce*envelope;
+      } else if (t<2.2) {
+        // Chewing: rhythmic squash with the jaw.
+        const chew=.5+.5*Math.sin((t-1.05)*Math.PI*2/.35-Math.PI/2);
+        result.sy-=.045*chew*envelope; result.sx+=.03*chew*envelope; result.y+=1.5*chew*envelope;
+      } else if (t<2.6) {
+        // Gulp: a stretch that travels down.
+        const p=(t-2.2)/.4,gulp=Math.sin(p*Math.PI);
+        result.sy+=.07*gulp; result.sx-=.04*gulp; result.y-=3*gulp;
+      }
+    } else if (action==='yuck') {
+      const shake=Math.sin(t*22)*Math.exp(-t*1.2);
+      result.r=5*shake*envelope; result.x=-6*shake*envelope;
+      result.y+=2*envelope; result.sy-=.02*envelope;
     } else if (action==='jump') {
       // Anticipation, a ballistic arc, then a damped landing and smaller hop.
       for (const {start,takeoff,landing,height} of hops) {

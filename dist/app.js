@@ -6,14 +6,18 @@ const monsters = {
   momo: {
     name: 'Momo', personality: 'Der Wuschel', description: 'Momo, ein freundliches blaues Wuschelmonster',
     sheet: 'assets/momo.png', theme: '#73066d', tempo: 1, blink: [3400, 1500], voice: 250,
-    lines: { tickle: ['Hihihi!', 'Nicht am Bauch!', 'Du bist kitzelig … ich auch!'], jump: ['Boing!', 'Bis zu den Wolken!'], dance: ['Wackel, wackel!', 'So geht mein Monstertanz!'] }
+    lines: { tickle: ['Hihihi!', 'Nicht am Bauch!', 'Du bist kitzelig … ich auch!'], jump: ['Boing!', 'Bis zu den Wolken!'], dance: ['Wackel, wackel!', 'So geht mein Monstertanz!'] },
+    // How each snack goes down: love, fine or yuck, with what the monster says.
+    taste: { cookie: ['love', 'Mmmh, ein Keks!', 'Krümel überall!'], apple: ['yuck', 'Bäh, zu gesund!'], juice: ['fine', 'Schlürf!', 'Prickelt!'] }
   },
   pip: {
     name: 'Pip', personality: 'Der Wirbelwind', description: 'Pip, ein fröhliches orangefarbenes Monster mit kleinen Hörnern',
     sheet: 'assets/pip.png', theme: '#473178', tempo: 1.15, blink: [2500, 1500], voice: 390,
-    lines: { tickle: ['Hahaha! Nochmal!', 'Hihi, erwischt!', 'Das kitzelt!'], jump: ['Huuui!', 'Einmal bis zum Mond!'], dance: ['Wackel mit!', 'Tanzparty!'] }
+    lines: { tickle: ['Hahaha! Nochmal!', 'Hihi, erwischt!', 'Das kitzelt!'], jump: ['Huuui!', 'Einmal bis zum Mond!'], dance: ['Wackel mit!', 'Tanzparty!'] },
+    taste: { cookie: ['yuck', 'Bäh, zu süß!'], apple: ['love', 'Knack! Lecker!', 'Mein Lieblingsapfel!'], juice: ['fine', 'Gluck, gluck!', 'Erfrischend!'] }
   }
 };
+const snackGlyphs = { cookie: '🍪', apple: '🍎', juice: '🧃' };
 const keys = Object.keys(monsters);
 const plays = ['tickle', 'jump', 'dance'];
 // Stamped by the deploy workflow; a local checkout keeps the placeholder.
@@ -22,6 +26,8 @@ const version = stamp.startsWith('__') ? 'lokal' : stamp;
 const $ = (selector) => document.querySelector(selector);
 const choices = [...document.querySelectorAll('[data-choice]')];
 const actions = [...document.querySelectorAll('[data-action]')];
+const snackButtons = [...document.querySelectorAll('[data-snack]')];
+const snack = $('#snack');
 const arrows = [...document.querySelectorAll('.arrow')];
 const sprite = $('.main-sprite');
 const character = $('.character');
@@ -40,6 +46,7 @@ let renderer = null;
 let currentClip = null;
 let previousTime = 0;
 let nextBlink = 0;
+let snackFlight = null;
 const images = {};
 const springs = Object.fromEntries(Object.entries({x:0,y:0,r:0,sx:1,sy:1,height:0}).map(([key,value]) => [key,new MonsterMotion.Spring(value)]));
 
@@ -49,6 +56,10 @@ function clearAction() {
   clearTimeout(speechTimer);
   currentClip = null;
   actions.forEach(button => button.classList.remove('active'));
+  snackButtons.forEach(button => button.classList.remove('active'));
+  snackFlight?.cancel();
+  snackFlight = null;
+  snack.hidden = true;
 }
 
 function scheduleFrame() {
@@ -77,9 +88,30 @@ function startClip(name) {
 // Named instants inside a clip, e.g. the take-off of a jump or a dance beat.
 function moment(kind) {
   Sounds.play(kind, monster().voice);
+  if (kind === 'grab') snack.hidden = true;
   if (reduced.matches) return;
   if (kind === 'land') burst('jump');
   if (kind === 'beat') burst('dance', 3);
+  if (kind === 'gulp') burst('jump', 5);
+}
+
+// Offers a snack: it flies to the mouth, then the monster eats or refuses it.
+function feed(kind) {
+  if (!ready || !snackGlyphs[kind]) return;
+  const [verdict, ...lines] = monster().taste[kind];
+  startClip(verdict === 'yuck' ? 'yuck' : 'eat');
+  snack.textContent = snackGlyphs[kind];
+  snack.hidden = false;
+  const flight = verdict === 'yuck' ? .35 : .95;
+  snackFlight = snack.animate([
+    { transform: 'translate(-50%,-50%) scale(.6) rotate(-20deg)', top: '104%', opacity: 0 },
+    { opacity: 1, offset: .1 },
+    { transform: 'translate(-50%,-50%) scale(1.1) rotate(10deg)', top: '30%', offset: .55 },
+    { transform: 'translate(-50%,-50%) scale(.75) rotate(0deg)', top: '52%', opacity: 1 }
+  ], { duration: flight / monster().tempo * 1000, easing: 'ease-in-out', fill: 'forwards' });
+  if (verdict === 'yuck') snackFlight.onfinish = () => { snackFlight = snack.animate([{ top: '52%', opacity: 1 }, { top: '110%', opacity: 0, transform: 'translate(-50%,-50%) scale(.5) rotate(-60deg)' }], { duration: 500, easing: 'ease-in', fill: 'forwards' }); snackFlight.onfinish = () => { snack.hidden = true; }; };
+  say(lines[Math.floor(Math.random() * lines.length)], currentClip.duration / currentClip.speed * 1000 + 200);
+  snackButtons.find(button => button.dataset.snack === kind)?.classList.add('active');
 }
 
 function animate(now) {
@@ -201,6 +233,7 @@ function changeMonster(direction = 1, focus = false) {
 
 choices.forEach(button => button.addEventListener('click', () => selectMonster(button.dataset.choice)));
 actions.forEach(button => button.addEventListener('click', () => perform(button.dataset.action)));
+snackButtons.forEach(button => button.addEventListener('click', () => feed(button.dataset.snack)));
 arrows[0].addEventListener('click', () => changeMonster(-1));
 arrows[1].addEventListener('click', () => changeMonster(1));
 $('.monster-choices').addEventListener('keydown', event => {
@@ -264,6 +297,7 @@ Promise.all([
   document.body.classList.add('ready');
   touch.disabled = false;
   actions.forEach(button => { button.disabled = false; });
+  snackButtons.forEach(button => { button.disabled = false; });
   selectMonster(selected, false);
 }).catch(() => {
   $('.load-error').hidden = false;

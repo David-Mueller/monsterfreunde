@@ -38,6 +38,7 @@
           <span class="entrance"><span class="character"><span class="sprite main-sprite" role="img" aria-label="Momo, ein freundliches blaues Wuschelmonster"></span></span></span>
         </button>
         <div class="particles" aria-hidden="true"></div>
+        <span class="snack" id="snack" aria-hidden="true" hidden></span>
       </div>
       <button class="arrow arrow-right" type="button" aria-label="Pip auswählen">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg>
@@ -62,6 +63,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13M9 9l12-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="18" cy="16" rx="3" ry="3"/></svg>
         Tanzen
       </button>
+    </div>
+
+    <div class="snacks" aria-label="Snack geben">
+      <span class="snacks-label" id="snacks-label">Snack geben</span>
+      <button type="button" class="snack-button" data-snack="cookie" aria-label="Keks geben" disabled><span aria-hidden="true">🍪</span></button>
+      <button type="button" class="snack-button" data-snack="apple" aria-label="Apfel geben" disabled><span aria-hidden="true">🍎</span></button>
+      <button type="button" class="snack-button" data-snack="juice" aria-label="Saft geben" disabled><span aria-hidden="true">🧃</span></button>
     </div>
 
     <footer class="selection">

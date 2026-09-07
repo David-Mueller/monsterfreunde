@@ -15,13 +15,13 @@ Stand: 7. September 2026. Diese Datei sammelt Ideen; sie bedeutet nicht, dass al
 
 ### 1. Essen und Trinken geben
 
-- [ ] Eine kleine Auswahl an Snacks und ein Getränk anbieten.
-- [ ] Zunächst per Antippen füttern; später Essen und Becher zum Mund ziehen können.
-- [ ] Greifen, Kauen, Schlucken und zufriedenes Reagieren animieren.
-- [ ] Momo und Pip unterschiedliche Vorlieben und Reaktionen geben.
-- [ ] Die Aktionen sauber mit bereits laufenden Bewegungen verbinden.
+- [x] Keks, Apfel und Saft unter den Aktionen.
+- [x] Per Antippen füttern; der Snack fliegt zum Mund. Ziehen mit dem Finger kann später dazukommen.
+- [x] Jubeln, Kauen mit Knuspern, Schlucken und zufriedenes Reagieren, alles mit den vorhandenen Posen und Körperbewegung.
+- [x] Momo liebt Kekse und mag keinen Apfel, Pip liebt Äpfel und mag keine Kekse. Bei „Bäh!“ fällt der Snack zu Boden.
+- [x] Eine neue Aktion räumt einen fliegenden Snack sofort weg; nichts bleibt hängen.
 
-Die erste Version bleibt ein unkompliziertes Spiel. Hungeranzeigen oder zeitabhängige Pflegepflichten sind dafür nicht nötig.
+Die erste Version bleibt ein unkompliziertes Spiel ohne Hungeranzeige oder Pflegepflichten. Offen: Snack per Finger zum Mund ziehen, Trinken mit eigener Animation.
 
 ### 2. Ein besonderer Move pro Monster
 

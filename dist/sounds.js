@@ -12,7 +12,7 @@ const Sounds = (() => {
   let enabled = true;
   try { enabled = localStorage.getItem(STORAGE) !== 'off'; } catch (error) { enabled = true; }
   const lastPlayed = {};
-  const MIN_GAP = { giggle: .09, beat: .12, takeoff: .15, land: .12, wave: .3, hello: .3, pop: .08 };
+  const MIN_GAP = { giggle: .09, beat: .12, takeoff: .15, land: .12, wave: .3, hello: .3, pop: .08, chew: .12, gulp: .3, yuck: .4 };
   const listeners = new Set();
 
   function ensure() {
@@ -99,6 +99,21 @@ const Sounds = (() => {
         tone(ctx, out, { type: 'triangle', from: vary(base * 1.25), to: base * 1.35, start: when, duration: .13, gain: .3, attack: .015 });
         tone(ctx, out, { type: 'triangle', from: vary(base * 1.6), to: base * 1.5, start: when + .15, duration: .18, gain: .3, attack: .015 });
         return .35;
+      }
+      case 'chew': {
+        noise(ctx, out, { start: when, duration: .07, gain: .45, filter: 1600 });
+        tone(ctx, out, { type: 'triangle', from: vary(base * .8), to: base * .5, start: when, duration: .08, gain: .2, attack: .004 });
+        return .1;
+      }
+      case 'gulp': {
+        tone(ctx, out, { type: 'sine', from: vary(base * 1.3), to: base * .45, start: when, duration: .18, gain: .35, attack: .01 });
+        tone(ctx, out, { type: 'sine', from: base * .9, to: base * 1.6, start: when + .2, duration: .1, gain: .22, attack: .01 });
+        return .32;
+      }
+      case 'yuck': {
+        tone(ctx, out, { type: 'sawtooth', from: vary(base * 1.5), to: base * .6, start: when, duration: .42, gain: .18, attack: .02, filter: 900 });
+        tone(ctx, out, { type: 'triangle', from: vary(base * 1.55), to: base * .62, start: when + .03, duration: .4, gain: .18, attack: .02 });
+        return .45;
       }
       case 'pop': {
         tone(ctx, out, { type: 'sine', from: vary(base * 2.2), to: base * 1.1, start: when, duration: .09, gain: .3, attack: .004 });
