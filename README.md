@@ -31,9 +31,21 @@ Danach `http://localhost:8000` öffnen. Ein HTTP-Server ist nötig, weil die App
 
 Optionales Zusatzfeature: Ein Tipp auf den großen Mikrofon-Knopf startet ein Gespräch mit dem gewählten Monster (Momo, Pip, Lumi oder Zing), ein weiterer Tipp beendet es. Während des Gesprächs reden die Kinder einfach drauflos — die Realtime API erkennt selbst, wann gesprochen wird (semantic VAD), und die Kinder dürfen das Monster jederzeit unterbrechen (Barge-in, Vollduplex). Das Monster antwortet mit Stimme und führt Aktionen aus — hüpfen, tanzen, kitzeln, füttern, sein Kunststück, ein Gefühl zeigen, winken. Die App bleibt ohne dieses Feature vollständig nutzbar; `speech.js` lädt defensiv und blendet den Knopf aus, wenn Browser-Support, Mikrofon oder Server fehlen (dann zeigt der Knopf ein Schlaf-Emoji).
 
+### Zwei Engines (umschaltbar)
+
+Die Sprachsteuerung kann zwei OpenAI-Voice-Engines nutzen; umgeschaltet wird server-seitig (Hot-Switch, kein Neustart):
+
+| Engine | Modell | Verbindung | Turn-Taking | Werkzeuge |
+| --- | --- | --- | --- | --- |
+| `realtime` (Default) | `gpt-realtime-2.1-mini` | Ephemeral Token, Browser ↔ OpenAI direkt | `semantic_vad` (konfiguriert) | direkt (`session.tools`) |
+| `live` | `gpt-live-1` | SDP über den Proxy relayed, **kein Token im Browser** | modellintern, echtes Full-Duplex | über Delegation (`delegation.responses.tools`) |
+
+- **Umschalten:** `GET /api/engine` liefert `{engine, engines}`; `POST /api/engine {"engine":"live"}` schaltet um und schreibt `~/.claude/state/monster-speech-config.json`. Der Proxy liest die Datei bei jedem Mint frisch. Default ist `realtime` — erst nach erfolgreichem Test am Gerät auf `live` stellen.
+- **GPT-Live-1** ist ein echtes Full-Duplex-Modell (hört und spricht gleichzeitig), Preis $0.05/Min sekundengenau — mit dem 30-Min-Tageslimit also höchstens ~1,50 €/Tag. Die Live API hat kein `session.tools`; Funktionsaufrufe laufen über ein Delegations-Backend (`gpt-4o-mini`), dessen Tool-Calls dem Client über den Datenkanal zugestellt (verpackt in `response.event`) und mit `response.item.create` beantwortet werden. Live-Stimmen sind eine eigene Liste; Zuordnung best-effort: Momo `stone`, Pip `tempo`, Lumi `willow`, Zing `bossa`.
+
 ### Architektur
 
-- **Kein API-Key im Browser.** `scripts/speech-proxy.mjs` ist ein winziger Node-Server (nur Builtins, Node ≥ 22), der den echten OpenAI-API-Key nur im Serverprozess hält. Der Browser bekommt über `POST /api/session` ausschließlich einen kurzlebigen Ephemeral Token.
+- **Kein API-Key im Browser.** `scripts/speech-proxy.mjs` ist ein winziger Node-Server (nur Builtins, Node ≥ 22), der den echten OpenAI-API-Key nur im Serverprozess hält. Bei `realtime` bekommt der Browser über `POST /api/session` nur einen kurzlebigen Ephemeral Token; bei `live` schickt der Browser sein SDP-Offer an den Proxy, der es gegen `v1/live/sessions` relayed und ausschließlich die SDP-Antwort zurückgibt (der Browser sieht nie einen Token).
 - **Persona server-seitig gepinnt.** Modell (`gpt-realtime-2.1-mini`), kindgerechte deutsche Monster-Persona, passende Stimme und die Werkzeug-Whitelist werden beim Erzeugen des Tokens fest in die Session geschrieben. Der Client kann daran nichts ändern.
 - **Direkte WebRTC-Verbindung.** Mit dem Ephemeral Token verbindet sich der Browser per WebRTC direkt zur OpenAI Realtime API. Während einer laufenden Session ist das Mikrofon offen; die Turn-Detection der API (`semantic_vad` mit `interrupt_response`) übernimmt Sprech-Erkennung und Barge-in. Ausserhalb einer Session ist das Mikrofon vollständig gestoppt (keine Hintergrundaufnahme). Der Ring pulsiert, wenn das Monster zuhört (gelb) bzw. spricht (türkis).
 - **Witzige Stimmen pro Monster.** Jedes Monster hat eine eigene Realtime-Voice und eine Persona, die die Sprechweise vorgibt: Momo tief-brummig (`cedar`), Pip quirlig mit Kicheranfällen (`verse`), Lumi verträumt-flüsterig (`shimmer`), Zing hibbelig-gummiartig mit Quietsch-Lauten (`ash`).
@@ -54,6 +66,7 @@ Der Proxy lädt den Key selbst via `claude-control-op` aus 1Password (Vault Claw
 - Das Mikrofon ist nur während einer aktiven Session offen; ausserhalb wird der Track gestoppt (keine Hintergrundaufnahme).
 - Die Stimme/Persona einer Session gehört zum Monster, das beim Start gewählt war. Wer mitten im Gespräch das Monster wechselt, beendet die Session und startet für das neue Monster neu.
 - Der Proxy ist lokal und wird nicht mit `dist/` deployt; er läuft auf David's Mac (z. B. in einer tmux-Session).
+- **Live-Engine, noch am Gerät zu verifizieren:** Der Mint gegen `v1/live/sessions` (inkl. Persona, Live-Stimme und Delegations-Werkzeugen) ist per HTTP 201 bestätigt und die SDP-Antwort wird relayed. Das tatsächliche Full-Duplex-Audio, die delegations­getriggerten Animationen (Function-Calls über `response.event`) und das Einspeisen von UI-Aktionen (`response.item.create` mit Text-Item) sind in der OpenAI-Doku nicht vollständig spezifiziert und noch nicht mit echtem Browser-Audio getestet. Die Live-Stimmen-Zuordnung ist nicht auditioniert. Barge-in ist bei Live modellintern (keine dokumentierte Abschalt-Option).
 
 ## Dateien
 

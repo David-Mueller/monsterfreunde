@@ -9,10 +9,15 @@
 // (Barge-in) — Vollduplex. Es gibt keine Aufnahme über die Session hinaus:
 // beim Beenden wird der Mikrofon-Track sauber gestoppt.
 //
-// Ablauf: Start -> POST /api/session (gleiche Origin, liefert nur einen
-// kurzlebigen Ephemeral Token) -> WebRTC-Verbindung direkt zur OpenAI Realtime
-// API -> Antwort-Audio abspielen. Function-Calls des Modells werden auf die
-// Monster-Aktionen der App gemappt (strikte Whitelist, kein eval).
+// Zwei Engines (server-seitig umschaltbar, Auswahl kommt in der Mint-Antwort):
+//   - realtime: OpenAI Realtime API. Der Proxy liefert einen Ephemeral Token,
+//     der Browser tauscht das SDP direkt mit OpenAI.
+//   - live: OpenAI Live API (GPT-Live-1, echtes Full-Duplex). Der Browser
+//     schickt sein SDP-Offer an den Proxy, der es gegen v1/live/sessions
+//     relayed und nur die SDP-Antwort zurückgibt — KEIN Token im Browser.
+// Function-Calls des Modells werden auf die Monster-Aktionen der App gemappt
+// (strikte Whitelist, kein eval); bei Live laufen sie über Delegation und sind
+// in response.event verpackt.
 //
 // Alles ist defensiv: Fehlt der Browser-Support, das Mikrofon oder der Server,
 // bleibt die App voll nutzbar; der Knopf zeigt dann ein Schlaf-Emoji.
@@ -66,10 +71,12 @@
   let audioEl = null;
   let starting = null;         // Promise während des Verbindungsaufbaus
   let active = false;          // läuft gerade eine Session?
+  let engine = 'realtime';     // aktive Engine der Session ('realtime' | 'live')
   let sessionMonster = null;   // Monster, für das die Session gilt
   let sessionId = null;        // Server-Session-ID für die Heartbeats
   let heartbeatTimer = 0;
   let maxTimer = 0;
+  let speakingTimer = 0;       // Watchdog, der "Monster spricht" wieder abschaltet
   let childSpeaking = false;
   let monsterSpeaking = false;
   let toolExecuting = false;   // während einer Modell-Aktion kein UI-Echo einspeisen
@@ -106,6 +113,7 @@
   // --- Verbindung abbauen ---
   function teardown() {
     clearTimeout(maxTimer);
+    clearTimeout(speakingTimer);
     clearInterval(heartbeatTimer);
     heartbeatTimer = 0;
     handledCalls.clear();
@@ -154,6 +162,20 @@
     if (dc && dc.readyState === 'open') dc.send(JSON.stringify(obj));
   }
 
+  // Event-Namen unterscheiden sich je Engine: die Live API nutzt
+  // response.item.create statt conversation.item.create.
+  function itemCreate(item) {
+    sendEvent({ type: engine === 'live' ? 'response.item.create' : 'conversation.item.create', item });
+  }
+
+  // Watchdog: "Monster spricht" wieder abschalten, falls kein sauberes
+  // Ende-Event kommt (bei Live sind die Stop-Events nicht dokumentiert).
+  function markMonsterSpeaking() {
+    monsterSpeaking = true; paint();
+    clearTimeout(speakingTimer);
+    speakingTimer = window.setTimeout(() => { monsterSpeaking = false; paint(); }, 900);
+  }
+
   function handleFunctionCall(item) {
     if (!item || item.type !== 'function_call' || !item.call_id) return;
     if (handledCalls.has(item.call_id)) return;
@@ -166,32 +188,35 @@
     // zurück ins Gespräch gespeist wird (Doppel-Reaktion).
     if (tool) { toolExecuting = true; try { output = tool(args) || 'ok'; } catch { output = 'ups'; } finally { toolExecuting = false; } }
     // Ergebnis zurückmelden und Modell weitersprechen lassen.
-    sendEvent({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: item.call_id, output: String(output) } });
+    itemCreate({ type: 'function_call_output', call_id: item.call_id, output: String(output) });
     sendEvent({ type: 'response.create' });
   }
 
   function onMessage(event) {
     let msg;
     try { msg = JSON.parse(event.data); } catch { return; }
-    switch (msg.type) {
-      // Kind spricht (VAD) — auch Barge-in: Monster gilt als unterbrochen.
+    // Live wrappt Delegations-Events in response.event -> inneres Event auspacken.
+    const m = (engine === 'live' && msg.type === 'response.event' && msg.event) ? msg.event : msg;
+    switch (m.type) {
+      // Kind spricht (Realtime-VAD).
       case 'input_audio_buffer.speech_started':
         childSpeaking = true; monsterSpeaking = false; paint(); break;
       case 'input_audio_buffer.speech_stopped':
         childSpeaking = false; paint(); break;
-      // Monster spricht.
+      // Monster spricht (Realtime-Audio bzw. Live-Output-Transkript).
       case 'response.created':
       case 'response.output_audio.delta':
-        monsterSpeaking = true; paint(); break;
+      case 'session.output_transcript.delta':
+        markMonsterSpeaking(); break;
       case 'output_audio_buffer.stopped':
       case 'response.done':
-        monsterSpeaking = false; paint();
-        if (msg.type === 'response.done' && msg.response && Array.isArray(msg.response.output)) {
-          for (const item of msg.response.output) if (item.type === 'function_call') handleFunctionCall(item);
+        monsterSpeaking = false; clearTimeout(speakingTimer); paint();
+        if (m.type === 'response.done' && m.response && Array.isArray(m.response.output)) {
+          for (const item of m.response.output) if (item.type === 'function_call') handleFunctionCall(item);
         }
         break;
       case 'response.output_item.done':
-        if (msg.item && msg.item.type === 'function_call') handleFunctionCall(msg.item);
+        if (m.item && m.item.type === 'function_call') handleFunctionCall(m.item);
         break;
       default:
         break;
@@ -202,25 +227,9 @@
   async function connect() {
     const monster = app.monster;
 
-    // 1) Ephemeral Token vom eigenen Proxy holen (gleiche Origin).
-    const res = await fetch('/api/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ monster }),
-    });
-    if (!res.ok) {
-      let payload = null;
-      try { payload = await res.json(); } catch { /* ignore */ }
-      const err = new Error('session_failed');
-      err.friendly = payload && payload.message;
-      err.status = res.status;
-      throw err;
-    }
-    const data = await res.json();
-    sessionMonster = data.monster || monster;
-    sessionId = data.session_id || null;
-
-    // 2) WebRTC aufsetzen.
+    // 1) WebRTC vorbereiten. Das SDP-Offer wird für BEIDE Engines gebraucht:
+    //    Realtime tauscht es direkt mit OpenAI, die Live API lässt es über
+    //    unseren Proxy relayen (der Browser bekommt dort keinen Token).
     pc = new RTCPeerConnection();
     audioEl = audioEl || Object.assign(new Audio(), { autoplay: true });
     pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
@@ -233,20 +242,47 @@
     dc = pc.createDataChannel('oai-events');
     dc.addEventListener('message', onMessage);
 
-    // Mikrofon offen für die ganze Session (VAD steuert die Sprechpausen).
+    // Mikrofon offen für die ganze Session.
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     pc.addTrack(micStream.getAudioTracks()[0], micStream);
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    const sdpRes = await fetch(`${CALLS_URL}?model=${encodeURIComponent(data.model)}`, {
+    // 2) Session beim eigenen Proxy anfragen (Offer mitschicken — nur Live nutzt es).
+    const res = await fetch('/api/session', {
       method: 'POST',
-      body: offer.sdp,
-      headers: { Authorization: `Bearer ${data.client_secret}`, 'Content-Type': 'application/sdp' },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ monster, sdp: offer.sdp }),
     });
-    if (!sdpRes.ok) throw new Error('webrtc_failed');
-    await pc.setRemoteDescription({ type: 'answer', sdp: await sdpRes.text() });
+    if (!res.ok) {
+      let payload = null;
+      try { payload = await res.json(); } catch { /* ignore */ }
+      const err = new Error('session_failed');
+      err.friendly = payload && payload.message;
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    engine = data.engine === 'live' ? 'live' : 'realtime';
+    sessionMonster = data.monster || monster;
+    sessionId = data.session_id || null;
+
+    // 3) SDP-Antwort setzen — je Engine unterschiedlich.
+    if (engine === 'live') {
+      // Live API: der Proxy hat die Antwort schon mitgeliefert.
+      if (!data.sdp) throw new Error('live_no_answer');
+      await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+    } else {
+      // Realtime API: Browser tauscht das SDP direkt mit OpenAI (Ephemeral Token).
+      const sdpRes = await fetch(`${CALLS_URL}?model=${encodeURIComponent(data.model)}`, {
+        method: 'POST',
+        body: offer.sdp,
+        headers: { Authorization: `Bearer ${data.client_secret}`, 'Content-Type': 'application/sdp' },
+      });
+      if (!sdpRes.ok) throw new Error('webrtc_failed');
+      await pc.setRemoteDescription({ type: 'answer', sdp: await sdpRes.text() });
+    }
 
     // Erst "abgenommen", wenn der Datenkanal offen ist — vorher gehen die
     // ersten Worte der Kinder ins Leere. Danach begrüßt das Monster hörbar.
@@ -336,7 +372,7 @@
     const text = describeAction(e.detail);
     if (!text) return;
     lastInject = now;
-    sendEvent({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } });
+    itemCreate({ type: 'message', role: 'user', content: [{ type: 'input_text', text }] });
     sendEvent({ type: 'response.create' });
   });
 

@@ -20,8 +20,33 @@ import path from 'node:path';
 const PORT = 8092;
 const HOST = '127.0.0.1';
 const ALLOWED_ORIGIN = 'https://davids-macbook-pro.macaroni-wezen.ts.net:8443';
+
+// --- Realtime API (Standard-Engine) ---
 const MODEL = 'gpt-realtime-2.1-mini';
 const CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
+
+// --- Live API (GPT-Live-1, echtes Full-Duplex) ---
+// Anders als die Realtime API: KEIN Ephemeral Token für den Browser. Der Client
+// schickt sein SDP-Offer an unseren Proxy, dieser erzeugt die Session gegen
+// v1/live/sessions (mit dem echten Key) und relayed nur die SDP-Antwort zurück.
+// Der Browser sieht also nie einen OpenAI-Token. (Doku: /api/docs/guides/live,
+// /api/docs/guides/voice-webrtc?api=live)
+const LIVE_MODEL = 'gpt-live-1';
+const LIVE_SESSIONS_URL = 'https://api.openai.com/v1/live/sessions';
+// GPT-Live kennt kein session.tools (per API-Probe abgelehnt: "Unknown
+// parameter: 'session.tools'"). Funktionsaufrufe laufen über Delegation an ein
+// Responses-Backend; dessen Tool-Calls werden dem Client über den Datenkanal
+// zugestellt (gewrappt in response.event -> response.output_item.done) und vom
+// Client mit response.item.create beantwortet. gpt-4o-mini ist günstig, schnell
+// und überall verfügbar (Config-Annahme per HTTP 201 verifiziert).
+const DELEGATION_MODEL = 'gpt-4o-mini';
+// Live-API-Stimmen (eigene Liste, nicht die der Realtime API). Best-effort-
+// Zuordnung pro Monster — nicht auditioniert, ggf. am Gerät nachjustieren.
+const LIVE_VOICES = { momo: 'stone', pip: 'tempo', lumi: 'willow', zing: 'bossa' };
+
+// Engine-Umschaltung (Hot-Switch: bei jedem Mint frisch aus der Datei gelesen).
+const CONFIG_FILE = path.join(homedir(), '.claude', 'state', 'monster-speech-config.json');
+const ENGINES = ['realtime', 'live'];
 
 // Kostendeckel auf Basis der TATSÄCHLICHEN Nutzung: Der Client schickt während
 // einer aktiven Session alle 30 s einen Heartbeat; der Proxy zählt pro Session
@@ -171,6 +196,55 @@ function sessionConfig(key) {
   };
 }
 
+// Kurz-Instruktionen fürs Delegations-Backend (Live-Engine): es soll nur die
+// Animations-Werkzeuge auslösen, keine eigene Prosa erzeugen.
+const BACKEND_RULES = [
+  'Du bist die Werkzeug-Schicht hinter einem sprechenden Kinder-Monster.',
+  'Wenn das Kind das Monster zu etwas auffordert (hüpfen, tanzen, kitzeln, füttern,',
+  'besonderer Trick, ein Gefühl zeigen, winken), rufe SOFORT das passende Werkzeug auf.',
+  'Antworte selbst nicht mit Text — das Sprechen übernimmt das Monster. Nutze nur die Werkzeuge.',
+].join(' ');
+
+// Session-Config für die Live API (GPT-Live-1). Voll-Duplex: KEINE
+// turn_detection (modellintern). Werkzeuge laufen über Delegation.
+function liveSessionConfig(key, sdp) {
+  const m = monsters[key] || monsters.momo;
+  return {
+    session: {
+      model: LIVE_MODEL,
+      instructions: `${m.persona}\n\n${BASE_RULES}`,
+      audio: { output: { voice: LIVE_VOICES[key] || LIVE_VOICES.momo } },
+      delegation: {
+        type: 'responses',
+        responses: {
+          model: DELEGATION_MODEL,
+          instructions: BACKEND_RULES,
+          tools: TOOLS,
+          tool_choice: 'auto',
+          parallel_tool_calls: true,
+        },
+      },
+    },
+    transport: { type: 'webrtc', sdp },
+  };
+}
+
+// --- Engine-Umschaltung ---
+function readEngine() {
+  try {
+    const data = JSON.parse(readFileSync(CONFIG_FILE, 'utf8'));
+    if (data && ENGINES.includes(data.engine)) return data.engine;
+  } catch {
+    // keine Datei / kaputt -> Default
+  }
+  return 'realtime';
+}
+
+function writeEngine(engine) {
+  mkdirSync(path.dirname(CONFIG_FILE), { recursive: true });
+  writeFileSync(CONFIG_FILE, JSON.stringify({ engine }));
+}
+
 // --- Tagesbudget ---
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -262,12 +336,54 @@ async function handleSession(req, res, origin) {
   }
 
   const key = typeof body.monster === 'string' && monsters[body.monster] ? body.monster : 'momo';
+  const engine = readEngine();
 
   const usage = readUsage();
   if (usedSeconds(usage) + BASE_SECONDS > DAILY_LIMIT_SECONDS) {
     return sendJson(res, 429, { error: 'daily_limit', message: 'Die Monster schlafen schon. Morgen könnt ihr wieder zusammen sprechen!' }, origin);
   }
 
+  // Gemeinsame Felder für beide Engines. session_id ist unsere Usage-ID (für die
+  // Heartbeats), unabhängig von der OpenAI-Session.
+  const common = (extra) => {
+    const sessionId = startSession(usage); // Grundgebühr erst nach Erfolg buchen
+    return {
+      engine,
+      monster: key,
+      session_id: sessionId,
+      session_seconds: SESSION_CAP_SECONDS,
+      heartbeat_seconds: HEARTBEAT_SECONDS,
+      remaining_minutes: remainingMinutes(usage),
+      ...extra,
+    };
+  };
+
+  if (engine === 'live') {
+    // Live API: Browser-SDP-Offer wird zwingend benötigt (Relay).
+    if (typeof body.sdp !== 'string' || !body.sdp) {
+      return sendJson(res, 400, { error: 'sdp_required', message: 'Verbindungsangebot fehlt.' }, origin);
+    }
+    try {
+      const response = await fetch(LIVE_SESSIONS_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(liveSessionConfig(key, body.sdp)),
+      });
+      const data = await response.json();
+      const answer = data?.transport?.sdp;
+      if (!response.ok || !answer) {
+        console.error('[speech-proxy] live/sessions fehlgeschlagen:', response.status, JSON.stringify(data?.error || data)?.slice(0, 300));
+        return sendJson(res, 502, { error: 'upstream', message: 'Das Monster ist gerade eingeschlafen. Versuch es gleich nochmal.' }, origin);
+      }
+      // Nur die SDP-Antwort an den Client relayen — kein Token, kein Key.
+      return sendJson(res, 200, common({ model: LIVE_MODEL, sdp: answer }), origin);
+    } catch (error) {
+      console.error('[speech-proxy] Netzwerkfehler bei live/sessions:', error.message);
+      return sendJson(res, 502, { error: 'upstream', message: 'Das Monster ist gerade nicht erreichbar.' }, origin);
+    }
+  }
+
+  // Standard: Realtime API — Ephemeral Token für die direkte Browser-Verbindung.
   try {
     const response = await fetch(CLIENT_SECRETS_URL, {
       method: 'POST',
@@ -280,22 +396,36 @@ async function handleSession(req, res, origin) {
       console.error('[speech-proxy] client_secrets fehlgeschlagen:', response.status, JSON.stringify(data?.error || data)?.slice(0, 300));
       return sendJson(res, 502, { error: 'upstream', message: 'Das Monster ist gerade eingeschlafen. Versuch es gleich nochmal.' }, origin);
     }
-    // Erst nach erfolgreichem Mint die Grundgebühr buchen.
-    const sessionId = startSession(usage);
-    return sendJson(res, 200, {
-      client_secret: data.value,
-      expires_at: data.expires_at ?? null,
-      model: MODEL,
-      monster: key,
-      session_id: sessionId,
-      session_seconds: SESSION_CAP_SECONDS,
-      heartbeat_seconds: HEARTBEAT_SECONDS,
-      remaining_minutes: remainingMinutes(usage),
-    }, origin);
+    return sendJson(res, 200, common({ client_secret: data.value, expires_at: data.expires_at ?? null, model: MODEL }), origin);
   } catch (error) {
     console.error('[speech-proxy] Netzwerkfehler bei client_secrets:', error.message);
     return sendJson(res, 502, { error: 'upstream', message: 'Das Monster ist gerade nicht erreichbar.' }, origin);
   }
+}
+
+// Engine-Status lesen/umschalten (tailnet-only via Origin-Check + 127.0.0.1).
+async function handleEngineGet(res, origin) {
+  return sendJson(res, 200, { engine: readEngine(), engines: ENGINES }, origin);
+}
+
+async function handleEnginePost(req, res, origin) {
+  let body;
+  try {
+    body = await readBody(req);
+  } catch {
+    return sendJson(res, 400, { error: 'bad_request' }, origin);
+  }
+  if (!ENGINES.includes(body.engine)) {
+    return sendJson(res, 400, { error: 'invalid_engine', engines: ENGINES }, origin);
+  }
+  try {
+    writeEngine(body.engine);
+  } catch (error) {
+    console.error('[speech-proxy] Konnte Engine nicht speichern:', error.message);
+    return sendJson(res, 500, { error: 'write_failed' }, origin);
+  }
+  console.log(`[speech-proxy] Engine umgeschaltet auf: ${body.engine}`);
+  return sendJson(res, 200, { ok: true, engine: body.engine }, origin);
 }
 
 // Heartbeat: zählt die tatsächliche Sprechzeit einer laufenden Session.
@@ -341,13 +471,18 @@ const server = http.createServer((req, res) => {
     return handleHeartbeat(req, res, origin);
   }
 
+  if (['/api/engine', '/engine'].includes(req.url)) {
+    if (req.method === 'GET') return handleEngineGet(res, origin);
+    if (req.method === 'POST') return handleEnginePost(req, res, origin);
+  }
+
   if (req.method === 'GET' && ['/api/health', '/health'].includes(req.url)) {
-    return sendJson(res, 200, { ok: true }, origin);
+    return sendJson(res, 200, { ok: true, engine: readEngine() }, origin);
   }
 
   sendJson(res, 404, { error: 'not_found' }, origin);
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[speech-proxy] läuft auf http://${HOST}:${PORT} (Modell ${MODEL}, Tageslimit ${DAILY_LIMIT_MINUTES} min)`);
+  console.log(`[speech-proxy] läuft auf http://${HOST}:${PORT} (Engine ${readEngine()}, Realtime ${MODEL} / Live ${LIVE_MODEL}, Tageslimit ${DAILY_LIMIT_MINUTES} min)`);
 });
