@@ -282,11 +282,21 @@ function tickleAt(clientX, clientY) {
   const box = touch.getBoundingClientRect();
   const x = (clientX - box.left) / box.width, y = (clientY - box.top) / box.height;
   const marks = landmarks();
-  if (y < marks.headBottom + .06) perform('tickle-head');
-  else if (y > marks.bodyBottom - .14) perform('tickle-feet');
-  else if (Math.abs(x - .5) > .3) perform('tickle-side', { side: x < .5 ? 'left' : 'right' });
-  else perform('tickle');
+  let action = 'tickle', zone = 'bauch', options;
+  if (y < marks.headBottom + .06) { action = 'tickle-head'; zone = 'kopf'; }
+  else if (y > marks.bodyBottom - .14) { action = 'tickle-feet'; zone = 'fuesse'; }
+  else if (Math.abs(x - .5) > .3) { action = 'tickle-side'; zone = 'seite'; options = { side: x < .5 ? 'left' : 'right' }; }
+  perform(action, options);
+  emitUserAction({ action: 'kitzeln', zone });
 }
+
+// A genuine touch/click on the app's own controls, announced so an optional
+// add-on (the voice control) can tell the monster what the child just did.
+// Only fired from real UI input — never from actions the voice model triggers.
+function emitUserAction(detail) {
+  try { window.dispatchEvent(new CustomEvent('monster:action', { detail })); } catch { /* egal */ }
+}
+const SNACK_WORDS = { cookie: 'keks', apple: 'apfel', juice: 'saft' };
 
 function selectMonster(key, greet = true) {
   if (!monsters[key]) return;
@@ -296,6 +306,7 @@ function selectMonster(key, greet = true) {
   selected = key;
   const chosen = monsters[key];
   document.body.dataset.monster = key;
+  try { window.dispatchEvent(new CustomEvent('monster:selected', { detail: { monster: key } })); } catch { /* egal */ }
   document.querySelector('meta[name="theme-color"]').content = chosen.theme;
   $('#monster-name').textContent = chosen.name;
   $('#personality').textContent = chosen.personality;
@@ -336,9 +347,16 @@ function changeMonster(direction = 1, focus = false) {
 }
 
 choices.forEach(button => button.addEventListener('click', () => selectMonster(button.dataset.choice)));
-actions.forEach(button => button.addEventListener('click', () => perform(button.dataset.action)));
-snackButtons.forEach(button => button.addEventListener('click', () => feed(button.dataset.snack)));
-trickButton.addEventListener('click', trick);
+actions.forEach(button => button.addEventListener('click', () => {
+  const action = button.dataset.action;
+  perform(action);
+  emitUserAction(action === 'jump' ? { action: 'huepfen' } : action === 'dance' ? { action: 'tanzen' } : { action: 'kitzeln', zone: 'bauch' });
+}));
+snackButtons.forEach(button => button.addEventListener('click', () => {
+  feed(button.dataset.snack);
+  emitUserAction({ action: 'fuettern', snack: SNACK_WORDS[button.dataset.snack] || button.dataset.snack });
+}));
+trickButton.addEventListener('click', () => { trick(); emitUserAction({ action: 'besonderer_move' }); });
 arrows[0].addEventListener('click', () => changeMonster(-1));
 arrows[1].addEventListener('click', () => changeMonster(1));
 $('.monster-choices').addEventListener('keydown', event => {
@@ -351,7 +369,7 @@ $('.monster-choices').addEventListener('keydown', event => {
     choices.find(button => button.dataset.choice === key).focus();
   }
 });
-touch.addEventListener('click', () => { if (performance.now() > ignoreClickUntil) perform('tickle'); });
+touch.addEventListener('click', () => { if (performance.now() > ignoreClickUntil) { perform('tickle'); emitUserAction({ action: 'kitzeln', zone: 'bauch' }); } });
 touch.addEventListener('pointerdown', event => {
   if (!event.isPrimary) return;
   pointerStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
@@ -393,6 +411,42 @@ $('#version-button').addEventListener('click', async () => {
   $('#version').textContent = 'kopiert';
   setTimeout(() => { button.classList.remove('copied'); $('#version').textContent = version; }, 1200);
 });
+// A tiny, action-oriented public API so optional add-ons (the voice control in
+// speech.js) can drive the monster without touching any animation internals.
+// Every method is a no-op until the rig is ready, so callers stay safe.
+window.MonsterApp = {
+  get ready() { return ready; },
+  get monster() { return selected; },
+  monsters: keys,
+  select(key) { if (monsters[key]) selectMonster(key); return selected; },
+  jump() { perform('jump'); },
+  dance() { perform('dance'); },
+  trick() { trick(); },
+  greet() {
+    if (!ready) return;
+    noteInteraction();
+    startClip('wave');
+    Sounds.play('hello', monster().voice);
+    say(`Hallo! Ich bin ${monster().name}.`, 1400);
+  },
+  tickle(zone) {
+    const map = { kopf: 'tickle-head', bauch: 'tickle', fuesse: 'tickle-feet', 'füße': 'tickle-feet', seite: 'tickle-side' };
+    perform(map[zone] || 'tickle');
+  },
+  feed(snack) {
+    const map = { keks: 'cookie', apfel: 'apple', saft: 'juice' };
+    feed(map[snack] || snack);
+  },
+  express(emotion) {
+    // The app has no generic "emotion" clip, so map to the nearest playful move.
+    const map = { freude: 'dance', aufgeregt: 'jump', albern: 'tickle', muede: 'settle', 'müde': 'settle' };
+    const action = map[emotion] || 'dance';
+    if (action === 'settle') { if (ready) { noteInteraction(); startClip('settle'); } }
+    else perform(action);
+  },
+  say(text) { if (ready && typeof text === 'string' && text) say(text, 2400); }
+};
+
 Sounds.bindToggle($('#sound'));
 // Offline copy of the app; the registration URL carries the version so a new
 // deployment always installs a fresh worker.
