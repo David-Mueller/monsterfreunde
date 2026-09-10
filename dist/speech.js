@@ -97,6 +97,7 @@
   function setGlyph(g) { if (glyph) glyph.textContent = g; }
 
   function idleLook() {
+    delete button.dataset.engine;
     button.classList.remove('busy', 'active', 'on', 'speaking', 'asleep');
     setGlyph('🎤');
     button.setAttribute('aria-label', 'Gespräch starten');
@@ -266,6 +267,8 @@
     const data = await res.json();
     engine = data.engine === 'live' ? 'live' : 'realtime';
     sessionMonster = data.monster || monster;
+    // Sichtbarer Engine-Hinweis: ⚡-Badge am Knopf, solange die Live-Engine läuft.
+    button.dataset.engine = data.engine || 'realtime';
     sessionId = data.session_id || null;
 
     // 3) SDP-Antwort setzen — je Engine unterschiedlich.
