@@ -7,7 +7,7 @@
 const VERSION = '__VERSION__';
 // The local suffix makes structural asset changes visible in previews even
 // before the deployment workflow replaces VERSION with a commit stamp.
-const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal-five-monsters-v7-speech' : VERSION}`;
+const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal-five-monsters-v8-fresh-rig' : VERSION}`;
 const FILES = [
   './', 'index.html', 'styles.css', 'app.js', 'speech.js', 'monster-motion.js', 'rig.js', 'sounds.js', 'manifest.webmanifest',
   'assets/momo.png', 'assets/pip.png', 'assets/lumi.png', 'assets/zing.png', 'assets/mampf.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png'
@@ -16,7 +16,7 @@ const FILES = [
 // Every part image listed in the rig data is stored too, so new monsters
 // and new parts never need a change here.
 async function partFiles() {
-  const rig = await (await fetch('assets/rig.json')).json();
+  const rig = await (await fetch('assets/rig.json', { cache: 'reload' })).json();
   return Object.entries(rig).flatMap(([monster, data]) => Object.entries(data.parts)
     .filter(([part]) => !part.startsWith('eye'))
     .flatMap(([part, info]) => [`assets/parts/${monster}-${part}.png`, ...(info.lower ? [`assets/parts/${monster}-${part.replace('leg', 'shin')}.png`] : [])]));
