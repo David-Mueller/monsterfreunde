@@ -193,9 +193,15 @@
     sendEvent({ type: 'response.create' });
   }
 
+  function debugLog(payload) {
+    if (button.dataset.engine !== 'live') return;
+    try { fetch('/api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true }); } catch { /* egal */ }
+  }
+
   function onMessage(event) {
     let msg;
     try { msg = JSON.parse(event.data); } catch { return; }
+    debugLog({ type: msg.type, keys: Object.keys(msg), full: (JSON.stringify(msg).length < 1500 && /function|response|error|event/.test(String(msg.type))) ? msg : undefined });
     // Live wrappt Delegations-Events in response.event -> inneres Event auspacken.
     const m = (engine === 'live' && msg.type === 'response.event' && msg.event) ? msg.event : msg;
     switch (m.type) {

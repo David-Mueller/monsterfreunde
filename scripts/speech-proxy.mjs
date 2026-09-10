@@ -12,7 +12,7 @@
 
 import http from 'node:http';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -474,6 +474,20 @@ const server = http.createServer((req, res) => {
   if (['/api/engine', '/engine'].includes(req.url)) {
     if (req.method === 'GET') return handleEngineGet(res, origin);
     if (req.method === 'POST') return handleEnginePost(req, res, origin);
+  }
+
+  if (req.method === 'POST' && ['/api/client-log', '/client-log'].includes(req.url)) {
+    // Debug-Kanal: Client spiegelt Live-Engine-Events zur Fehlersuche.
+    let body = '';
+    req.on('data', c => { body += c; if (body.length > 20000) req.destroy(); });
+    req.on('end', () => {
+      try {
+        const line = JSON.stringify({ ts: new Date().toISOString(), data: JSON.parse(body) });
+        appendFileSync(path.join(homedir(), '.claude', 'state', 'monster-speech-clientlog.jsonl'), line + '\n');
+      } catch { /* egal */ }
+      res.writeHead(204, corsHeaders(origin)); res.end();
+    });
+    return;
   }
 
   if (req.method === 'GET' && ['/api/health', '/health'].includes(req.url)) {
