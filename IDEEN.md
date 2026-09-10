@@ -4,7 +4,7 @@ Stand: 7. September 2026. Diese Datei sammelt Ideen; sie bedeutet nicht, dass al
 
 ## Schon vorhanden
 
-- [x] Vier Monster auswählen: Momo, Pip, Lumi und den langbeinigen Gummiwurm Zing.
+- [x] Fünf Monster auswählen: Momo, Pip, Lumi, den langbeinigen Gummiwurm Zing und das Riesenmaul Mampf.
 - [x] Bewegte Monster mit Blinzeln und Begrüßung.
 - [x] Kitzeln mit visueller Reaktion und Sprechblase, in fünf Zonen: Kopf, Bauch, Füße, linke und rechte Seite reagieren unterschiedlich.
 - [x] Hüpfen und Tanzen.
@@ -30,6 +30,7 @@ Die erste Version bleibt ein unkompliziertes Spiel ohne Hungeranzeige oder Pfleg
 - [x] **Pip: Salto.** Tiefes Ducken, hoher Sprung mit einem Überschlag, federnde Landung und stolzes Hüpfen mit erhobenen Armen.
 - [x] **Lumi: Sternenfunkeln.** Schwebende Bewegung mit erhobenen Armen und magischen Lichtpartikeln.
 - [x] **Zing: Superschlängler.** Der lange Wurmkörper windet sich in einer übertriebenen S-Kurve.
+- [x] **Mampf: Riesenhapps.** Der Mund klappt fast über den ganzen Körper auf und schnappt zweimal mit einem eigenen Geräusch zu.
 - [x] Ausholen, Hauptbewegung und Ausklang mit eigenen Sounds: Wusch, Plumps, Kichern beziehungsweise Tadaa.
 - [ ] Die Moves sind Vorschläge und lassen sich in `monster-motion.js` leicht austauschen.
 
@@ -37,7 +38,7 @@ Die erste Version bleibt ein unkompliziertes Spiel ohne Hungeranzeige oder Pfleg
 
 - [x] Kichern beim Kitzeln, ein lustiges „Boing“ beim Hüpfen und ein Plumps bei der Landung; Kau- und Schluckgeräusche folgen mit dem Essen.
 - [x] Einen passenden Sound zu jedem besonderen Move ergänzen.
-- [x] Alle vier Monster unterschiedlich klingen lassen: eigene Stimmlage und eigenes Tempo pro Monster.
+- [x] Alle fünf Monster unterschiedlich klingen lassen: eigene Stimmlage und eigenes Tempo pro Monster.
 - [x] Sounds genau mit den passenden Bewegungsmomenten auslösen: Absprung, Landung, Tanzschläge, Kicherer.
 - [x] Kleine Zufallsabweichungen pro Wiedergabe, damit Wiederholungen lebendiger wirken.
 - [x] Ton-Schalter oben rechts, Einstellung bleibt auf dem Gerät gespeichert, zurückhaltende Lautstärke.

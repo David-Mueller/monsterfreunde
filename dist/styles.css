@@ -6,6 +6,7 @@ body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 50% 42%,va
 body[data-monster="pip"]{--sheet:url("assets/pip.png");--bg-top:#473178;--bg-center:#8154c9;--bg-bottom:#292149}
 body[data-monster="lumi"]{--sheet:url("assets/lumi.png");--accent:#ffe66b;--bg-top:#302262;--bg-center:#7350bd;--bg-bottom:#18163e}
 body[data-monster="zing"]{--sheet:url("assets/zing.png");--accent:#ffe63d;--bg-top:#075a70;--bg-center:#078ba0;--bg-bottom:#073a55}
+body[data-monster="mampf"]{--sheet:url("assets/mampf.png");--accent:#ffbd32;--bg-top:#183d31;--bg-center:#327352;--bg-bottom:#102d28}
 button{font:inherit;color:inherit;cursor:pointer;border:0;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 button:disabled{cursor:wait}
 button:focus-visible{outline:3px solid var(--accent);outline-offset:6px}
@@ -74,7 +75,7 @@ h2{font-size:29px;line-height:1.2;letter-spacing:-.045em;font-weight:850;margin:
 .choice.selected .portrait{border:3px solid var(--accent);background:#2f174e;box-shadow:0 0 0 5px #e5fb790e}
 .choice:hover .portrait{transform:translateY(-3px)}
 .mini-sprite{position:absolute;width:80px;height:80px;left:50%;top:44%;transform:translate(-50%,-50%);clip-path:circle(32px at 40px 45px)}
-.momo{--sheet:url("assets/momo.png")}.pip{--sheet:url("assets/pip.png")}.lumi{--sheet:url("assets/lumi.png")}.zing{--sheet:url("assets/zing.png")}
+.momo{--sheet:url("assets/momo.png")}.pip{--sheet:url("assets/pip.png")}.lumi{--sheet:url("assets/lumi.png")}.zing{--sheet:url("assets/zing.png")}.mampf{--sheet:url("assets/mampf.png")}
 .mini-sprite.zing{width:100px;height:100px;top:50%;clip-path:circle(32px at 50px 50px)}
 .choice-name{font-size:14px;font-weight:750;line-height:1.2;color:#fff9ff8c;transition:color .2s}
 .choice.selected .choice-name{color:var(--accent)}
@@ -98,4 +99,6 @@ h2{font-size:29px;line-height:1.2;letter-spacing:-.045em;font-weight:850;margin:
 @media(max-width:380px){.app{padding-left:15px;padding-right:15px}.action{padding:11px 12px;gap:5px}.actions{gap:7px}.snacks{gap:6px}.snack-button{width:42px;height:42px;font-size:22px}.arrow{width:38px;height:38px}.personality{font-size:14px}}
 @media(max-height:740px){.app{padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(16px,env(safe-area-inset-bottom))}.eyebrow{margin-bottom:12px}.monster-area{width:min(100%,310px)}.playground{min-height:200px;margin-top:2px}.actions{margin:16px 0 10px}.snacks{margin-bottom:16px}.snack-button{width:42px;height:42px;font-size:22px}.selection-hint{margin-top:15px}.portrait{width:61px;height:61px}.mini-sprite{width:76px;height:76px;clip-path:circle(30px at 38px 43px)}.mini-sprite.zing{width:94px;height:94px;clip-path:circle(30px at 47px 47px)}h2{font-size:26px}}
 @media(max-height:640px){.monster-area{width:min(100%,240px)}h1{font-size:27px}.eyebrow{font-size:12px;margin-bottom:9px}.playground{min-height:195px}.actions{margin:12px 0 8px}.snacks{margin-bottom:12px}.trick{padding:9px 11px}.divider{margin:0 3px}.selection-hint{display:none}.portrait{width:55px;height:55px}.choice{min-width:57px;gap:6px}.mini-sprite{width:69px;height:69px;clip-path:circle(27px at 34.5px 39px)}.mini-sprite.zing{width:86px;height:86px;clip-path:circle(27px at 43px 43px)}.identity p{margin-top:6px}.name-line{gap:9px}}
+@media(max-width:430px){.monster-choices{gap:2px}.choice{min-width:55px}.portrait{width:56px;height:56px}.mini-sprite{width:70px;height:70px;clip-path:circle(28px at 35px 39px)}.mini-sprite.zing{width:88px;height:88px;clip-path:circle(28px at 44px 44px)}}
+@media(max-width:330px){.choice{min-width:48px}.portrait{width:48px;height:48px}.mini-sprite{width:60px;height:60px;clip-path:circle(24px at 30px 34px)}.mini-sprite.zing{width:75px;height:75px;clip-path:circle(24px at 37.5px 37.5px)}.choice-name{font-size:12px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.character{will-change:auto}.particles{display:none}}

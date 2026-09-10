@@ -9,7 +9,7 @@
 // {open 0..1, happy 0..1, gazeX, gazeY}, mouth variant and mouth scale, and
 // hair {r, sx, sy} for hair or horns that swing behind the body.
 
-const PUPIL = { momo: '#171449', pip: '#4a0f2e', lumi: '#35106f', zing: '#11145a' };
+const PUPIL = { momo: '#171449', pip: '#4a0f2e', lumi: '#35106f', zing: '#11145a', mampf: '#142b3b' };
 
 class MonsterRig {
   constructor(root, data, key) {
@@ -320,6 +320,19 @@ const RigMotion = (() => {
       state.mouth = active > .45 ? 'mouth-laugh' : 'mouth';
       state.mouthScaleX = 1 + .12 * Math.abs(wave) * active;
       state.hairR = -10 * wave * active;
+    } else if (action === 'chomp') {
+      const open1 = smooth((t - .12) / .15) * smooth((.7 - t) / .13);
+      const open2 = smooth((t - .9) / .16) * smooth((1.72 - t) / .2);
+      const open = Math.max(open1, open2);
+      const finish = smooth((t - 1.58) / .18) * smooth((duration - t) / .3);
+      both(state, REST.armLeft + (232 - REST.armLeft) * Math.max(open, finish), 10 * open);
+      state.eyes.open = 1 - .28 * open;
+      state.eyes.browLift = .8 * open;
+      state.eyes.gazeY = .35 * open;
+      state.eyes.happy = .7 * finish;
+      state.mouth = open > .08 ? 'mouth-open' : finish > .08 ? 'mouth-laugh' : 'mouth';
+      state.mouthScaleX = 1 + .05 * open;
+      state.mouthScaleY = 1 + .1 * open + .06 * finish;
     }
     return state;
   }

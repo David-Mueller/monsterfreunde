@@ -7,10 +7,10 @@
 const VERSION = '__VERSION__';
 // The local suffix makes structural asset changes visible in previews even
 // before the deployment workflow replaces VERSION with a commit stamp.
-const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal-four-monsters-v5' : VERSION}`;
+const CACHE = `monsterfreunde-${VERSION.startsWith('__') ? 'lokal-five-monsters-v6' : VERSION}`;
 const FILES = [
   './', 'index.html', 'styles.css', 'app.js', 'monster-motion.js', 'rig.js', 'sounds.js', 'manifest.webmanifest',
-  'assets/momo.png', 'assets/pip.png', 'assets/lumi.png', 'assets/zing.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png'
+  'assets/momo.png', 'assets/pip.png', 'assets/lumi.png', 'assets/zing.png', 'assets/mampf.png', 'assets/rig.json', 'assets/icon-192.png', 'assets/icon-512.png'
 ];
 
 // Every part image listed in the rig data is stored too, so new monsters

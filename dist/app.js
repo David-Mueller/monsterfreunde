@@ -35,6 +35,14 @@ const monsters = {
       'tickle-head': ['Nicht die drei Haare!', 'Hihi, oben kribbelt es!'], 'tickle-feet': ['Meine Flossenfüße!', 'Hui, lange Leitung!'], 'tickle-side': ['Ein Wurm hat nur Seiten!', 'Hahaha, Volltreffer!'] },
     taste: { cookie: ['fine', 'Krümelkurve!', 'Knack und weg!'], apple: ['love', 'Ein Apfel für den Wurm!', 'Knackig!'], juice: ['yuck', 'Glitschig bin ich schon genug!'] },
     trick: { clip: 'squiggle', name: 'Schlängeln', label: 'Zings Superschlängler', effect: 'squiggle', lines: ['Gummiwurm-Modus!', 'Schlängel-Schabernack!'] }
+  },
+  mampf: {
+    name: 'Mampf', personality: 'Das Riesenmaul', description: 'Mampf, ein moosgrünes Waldmonster mit einem riesigen Mund',
+    sheet: 'assets/mampf.png', theme: '#24533f', tempo: .9, blink: [3100, 1800], voice: 205,
+    lines: { tickle: ['Hahaha-happs!', 'Mein Bauch wackelt!', 'Kicherkrümel!'], jump: ['Waldwärts!', 'Plumps macht der Mampf!'], dance: ['Wackelwald!', 'Blättertanz!'],
+      'tickle-head': ['Meine Blatt-Ohren!', 'Hihi, das raschelt!'], 'tickle-feet': ['Nicht die Platschfüße!', 'Hahaha, untenrum!'], 'tickle-side': ['Da kitzelt das Moos!', 'Hui, die Flanke!'] },
+    taste: { cookie: ['love', 'HAPPS! Lieblingskeks!', 'Noch ein Krümelchen!'], apple: ['fine', 'Knackiger Waldapfel!', 'Der passt rein!'], juice: ['yuck', 'Davon wird mein Maul nass!'] },
+    trick: { clip: 'chomp', name: 'Riesenhapps', label: 'Mampfs Riesenhapps', effect: 'chomp', lines: ['Mund auf … HAPPS!', 'Alles passt rein!'] }
   }
 };
 const snackGlyphs = { cookie: '🍪', apple: '🍎', juice: '🧃' };
@@ -232,7 +240,8 @@ function burst(action, count = 9) {
   if (reduced.matches) return;
   const glyphs = action === 'dance' ? ['♪', '♫', '♪']
     : action === 'sparkle' ? ['★', '✦', '·']
-      : action === 'squiggle' ? ['〰', '∿', '✧'] : ['✦', '·', '✧'];
+      : action === 'squiggle' ? ['〰', '∿', '✧']
+        : action === 'chomp' ? ['◆', '✦', '●'] : ['✦', '·', '✧'];
   const offset = Math.random() * Math.PI * 2;
   for (let i = 0; i < count; i++) {
     const particle = document.createElement('span');

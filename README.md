@@ -1,14 +1,14 @@
 # Monsterfreunde
 
-Eine kleine Webapp für Android im Hochformat: Momo, Pip, Lumi oder Zing auswählen, füttern, kitzeln und bewegen lassen.
+Eine kleine Webapp für Android im Hochformat: Momo, Pip, Lumi, Zing oder Mampf auswählen, füttern, kitzeln und bewegen lassen.
 
 ## Aktueller Stand
 
-- Vier eigene Monster mit deutlich unterschiedlichen Silhouetten: Momo, Pip, das kosmische Sternchen Lumi und der langbeinige Gummiwurm Zing.
-- Baukasten-Rig statt Posenwechsel: Körper, Haare beziehungsweise Hörner, drei Münder, beide Arme und beide Beine sind einzelne Teile, die per CSS-Transform bewegt werden. Lange Beine haben ein Knie und ziehen beim Sprung an, kurze Füße kippen mit. Pupillen und Lider werden im Code gezeichnet. Alle Bewegungen laufen über Federn, sodass jede Aktion aus der aktuellen Haltung heraus beginnt und weich in die Ruhehaltung zurückkehrt. Kein Morphen, kein Schnitt.
+- Fünf eigene Monster mit deutlich unterschiedlichen Silhouetten: Momo, Pip, das kosmische Sternchen Lumi, der langbeinige Gummiwurm Zing und das moosgrüne Riesenmaul Mampf.
+- Baukasten-Rig statt Posenwechsel: Körper, Haare beziehungsweise Hörner, drei Münder und Beine sind einzelne Teile; bei den ersten vier Figuren auch beide Arme. Mampfs kurze Fellarme bleiben für eine saubere Silhouette zunächst am Körper, sein riesiger Mund bewegt sich separat. Lange Beine haben ein Knie und ziehen beim Sprung an, kurze Füße kippen mit. Pupillen und Lider werden im Code gezeichnet. Alle Bewegungen laufen über Federn, sodass jede Aktion aus der aktuellen Haltung heraus beginnt und weich in die Ruhehaltung zurückkehrt. Kein Morphen, kein Schnitt.
 - Blinzeln, Atmen, Begrüßung, Hüpfen und Tanzen. Kitzeln in fünf Zonen: Kopf, Bauch, Füße und beide Seiten reagieren verschieden.
 - Augen, Pupillen, Lider und Brauen im Code, mit Ausdrücken von lachend bis angewidert.
-- Ein besonderer Move pro Monster: Momos Wirbel, Pips Salto, Lumis Sternenfunkeln und Zings Superschlängler.
+- Ein besonderer Move pro Monster: Momos Wirbel, Pips Salto, Lumis Sternenfunkeln, Zings Superschlängler und Mampfs Riesenhapps.
 - Leben im Leerlauf: Wer eine Weile nichts antippt, sieht das Monster umherschauen, hüpfen oder winken. Landungen vibrieren kurz auf Geräten, die das können.
 - Füttern mit Keks, Apfel und Saft: Der Snack fliegt zum Mund, das Monster jubelt, kaut und schluckt. Jedes Monster hat einen Lieblingssnack und einen, den es verweigert.
 - Federnde Körperbewegung und zum Sprung passender Schatten.

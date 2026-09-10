@@ -79,7 +79,7 @@ def save(cell, mask, path):
     return box
 
 rig = {}
-for name in ('momo', 'pip', 'lumi', 'zing'):
+for name in ('momo', 'pip', 'lumi', 'zing', 'mampf'):
     frames, n = cells(name)
     p0 = frames[0]
     opaque = p0[..., 3] > 200
@@ -133,7 +133,10 @@ for name in ('momo', 'pip', 'lumi', 'zing'):
         part = component_at(skin_mask(p0) & ~torso_wide, *hand(0, side))
         if part is not None:
             stubs |= part
-    body = opaque & ~ndimage.binary_dilation(stubs, structure=disk(2))
+    # Mampf keeps his short resting arms baked into the body for now. Their
+    # soft furry edges merge into the torso and look cleaner than an
+    # automatic cut; his defining animation is the separately swapped mouth.
+    body = opaque if name == 'mampf' else opaque & ~ndimage.binary_dilation(stubs, structure=disk(2))
     for mask in accent_masks.values():
         body &= ~mask
     if name == 'lumi':
@@ -315,6 +318,8 @@ for name in ('momo', 'pip', 'lumi', 'zing'):
     torso5 = ndimage.binary_dilation(torso5, structure=disk(int(n*.015)))
     cy, cx = ndimage.center_of_mass(torso5)
     for side in ('left', 'right'):
+        if name == 'mampf':
+            continue
         arm = component_at(skin_mask(p5) & ~torso5, *hand(5, side))
         minimum_arm = n * n * (.0008 if name == 'zing' else .004)
         if arm is None or arm.sum() < minimum_arm:

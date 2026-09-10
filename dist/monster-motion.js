@@ -45,6 +45,9 @@ const MonsterMotion = (() => {
     // Zing bends like a rubber hose, alternating long and short S-curves.
     squiggle:{keys:[[0,0],[.25,2],[.72,3],[1.19,2],[1.66,3],[2.13,2],[2.6,7],[3.05,0]],still:3,
       moments:[{at:.25,kind:'stretch'},{at:.72,kind:'pop'},{at:1.19,kind:'stretch'},{at:1.66,kind:'pop'},{at:2.13,kind:'stretch'},{at:2.58,kind:'tada'}]},
+    // Mampf opens his impossible mouth twice, with a comic snap in between.
+    chomp:{keys:[[0,0],[.22,5],[.58,5],[.78,0],[1.02,5],[1.55,5],[1.82,7],[2.28,0]],still:5,
+      moments:[{at:.25,kind:'chomp'},{at:.7,kind:'pop'},{at:1.06,kind:'chomp'},{at:1.72,kind:'giggle'}]},
   };
   for (const clip of Object.values(clips)) clip.duration=clip.keys[clip.keys.length-1][0];
   // Whole-body transform for the current instant: idle breathing plus the
@@ -171,6 +174,15 @@ const MonsterMotion = (() => {
       result.y-=4*Math.max(0,snap)*active;
       result.sx-=.065*Math.abs(wave)*active;
       result.sy+=.085*Math.abs(wave)*active+.025*snap*active;
+    } else if (action==='chomp') {
+      const open1=smooth((t-.12)/.15)*smooth((.7-t)/.13);
+      const open2=smooth((t-.9)/.16)*smooth((1.72-t)/.2);
+      const open=Math.max(open1,open2);
+      const recoil=t>.7&&t<.95?Math.sin((t-.7)/.25*Math.PI):0;
+      result.sy+=.095*open-.07*recoil;
+      result.sx-=.055*open-.08*recoil;
+      result.y-=4*open;
+      result.r=1.8*Math.sin(t*17)*open;
     } else if (action==='yuck') {
       const shake=Math.sin(t*22)*Math.exp(-t*1.2);
       result.r=5*shake*envelope; result.x=-6*shake*envelope;
